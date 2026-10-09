@@ -1,0 +1,13 @@
+*:Zone.Identifier
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+test-results/
+playwright-report/
+.react-router/
+.data/
