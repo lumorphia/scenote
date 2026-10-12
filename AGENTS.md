@@ -26,6 +26,8 @@ scripts/        dev-certs.sh (開発と E2E の TLS)
 
 共通の基盤は lumorphia/platform のパッケージ (`@lumorphia/ops` など) を版を固定して使う。
 
+現像は lumorphia/editor のパッケージ (`@lumorphia/editor-*`) を版を固定して使う。Scenote 側のつなぎは `apps/app/web/features/editor-host/` (ホストの組み立て) と `web/routes/edit.tsx`。ホストに求められること (`/edit` だけ COOP / COEP、CSP の `'wasm-unsafe-eval'` と `worker-src`、`/models/` の配信、Tailwind の `@source`、Vite の `optimizeDeps`) は lumorphia/editor の ADR-0009 に従う。現像そのものを直すのは lumorphia/editor で、公開されたら版を上げる。下書きの IndexedDB の名前 (`scenote-editor`) は変えない
+
 ## 依存の方向 (ESLint が強制する)
 
 ```
@@ -82,6 +84,7 @@ pnpm db:generate && pnpm db:migrate         # スキーマ変更後
 pnpm test                                   # 単体・DB テスト
 pnpm e2e                                    # Playwright (https)
 pnpm dev:certs                              # 開発と E2E の TLS を作る (あれば作り直さない)
+pnpm --filter @lumorphia-scenote/app models # 認識のモデルと WASM を apps/app/models に揃える (dev / build の前に走る)
 ```
 
 DB テストを手元で回すとき: `DATABASE_URL=$(grep '^DATABASE_URL' .env | cut -d= -f2-) pnpm test`
