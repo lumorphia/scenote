@@ -31,7 +31,7 @@
 - セッションは 30 日。Lumorphia の `sid` と、そのログインの ID トークンをセッションに持つ
 - **Scenote からのログアウト** (`POST /api/lumorphia/logout`): Scenote のセッションを終えてから accounts の end-session の URL を返す。`id_token_hint` はそのセッションの ID トークン。`state` は 10 分の使い切りで、戻り先 (`GET /api/lumorphia/signed-out`) で照合する
 - **back-channel logout** (`POST /api/lumorphia/backchannel-logout`): auth-client の受け口で確かめ、`sub` と `sid` が合うセッションだけを消す。`jti` を記録して同じ知らせを 2 回当てない。CSRF の Origin 確認からは外し、署名で守る
-- 退会の知らせ (`POST /api/lumorphia/account-events`) は S4c で足す
+- 退会の知らせ (`POST /api/lumorphia/account-events`) は ADR-0010
 
 ### 規約の同意
 
