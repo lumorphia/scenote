@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* 現像の UI (@lumorphia/editor-react) は node_modules にある。Tailwind は node_modules を自分では走査しない (lumorphia/editor の ADR-0009) */
+@source "../node_modules/@lumorphia/editor-react/dist";
 
 /*
  * 配色トークン。写真が主役なので UI は控えめに。ライトは紙と焼き土 (クリームの地、こげ茶の文字、
