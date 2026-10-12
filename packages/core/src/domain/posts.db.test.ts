@@ -2,11 +2,12 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { MemoryStorage } from "@lumorphia/storage";
+import { DEFAULT_RECIPE } from "@lumorphia/editor-recipe";
 import { createDatabase, schema, type Database } from "@lumorphia-scenote/db";
 import { MemoryJobQueue } from "../jobs/queue.ts";
 import { tmpKey, variantKey } from "../storage-keys.ts";
 import { createUpload, UPLOAD_TTL_MS } from "./uploads.ts";
-import { createPost, getOwnPost } from "./posts.ts";
+import { createPost, getOwnPost, MAX_BODY_LENGTH, MAX_TITLE_LENGTH } from "./posts.ts";
 
 const databaseUrl = process.env.DATABASE_URL;
 const IMAGE_BASE = "https://img.example.invalid";
@@ -119,7 +120,92 @@ describe.skipIf(!databaseUrl)("posts (PostgreSQL)", () => {
     });
   });
 
+  describe("createPost with what the user wrote (S5b)", () => {
+    const create = async (fields: Record<string, unknown>) => {
+      const me = await user();
+      const { postId } = await createPost(deps(), me.id, {
+        uploadId: await uploaded(me.id),
+        ...fields,
+      });
+      return db.query.posts.findFirst({ where: eq(schema.posts.id, postId) });
+    };
+    const refuse = async (fields: Record<string, unknown>) => {
+      const me = await user();
+      await expect(
+        createPost(deps(), me.id, { uploadId: await uploaded(me.id), ...fields }),
+      ).rejects.toMatchObject({ code: "validation" });
+    };
+
+    it("keeps the title and the body", async () => {
+      expect(await create({ title: "テスト_夕焼け", body: "テスト_本文" })).toMatchObject({
+        title: "テスト_夕焼け",
+        body: "テスト_本文",
+      });
+    });
+
+    it("lets a post have only the image", async () => {
+      expect(await create({})).toMatchObject({
+        title: null,
+        body: null,
+        takenOn: null,
+        recipe: null,
+      });
+    });
+
+    it("trims the title and treats a blank one as none", async () => {
+      expect((await create({ title: "  テスト_題  " }))?.title).toBe("テスト_題");
+      expect(await create({ title: "   ", body: "\n\n" })).toMatchObject({
+        title: null,
+        body: null,
+      });
+    });
+
+    it("refuses a title that is too long", async () => {
+      await refuse({ title: "あ".repeat(MAX_TITLE_LENGTH + 1) });
+    });
+
+    it("refuses a body that is too long", async () => {
+      await refuse({ body: "あ".repeat(MAX_BODY_LENGTH + 1) });
+    });
+
+    it("keeps the day the photo was taken", async () => {
+      expect((await create({ takenOn: "2026-09-30" }))?.takenOn).toBe("2026-09-30");
+    });
+
+    it("refuses a day that is not a calendar date", async () => {
+      await refuse({ takenOn: "2026-02-30" });
+    });
+
+    it("refuses a day in the future", async () => {
+      const later = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+      await refuse({ takenOn: later });
+    });
+
+    it("keeps the editing recipe", async () => {
+      expect((await create({ recipe: DEFAULT_RECIPE }))?.recipe).toEqual(DEFAULT_RECIPE);
+    });
+
+    it("refuses a recipe the editor cannot read", async () => {
+      await refuse({ recipe: { version: 999, anything: true } });
+    });
+  });
+
   describe("getOwnPost", () => {
+    it("shows what the user wrote", async () => {
+      const me = await user();
+      const { postId } = await createPost(deps(), me.id, {
+        uploadId: await uploaded(me.id),
+        title: "テスト_題",
+        body: "テスト_本文",
+        takenOn: "2026-09-30",
+      });
+      expect(await getOwnPost({ db, imageBaseUrl: IMAGE_BASE }, me.id, postId)).toMatchObject({
+        title: "テスト_題",
+        body: "テスト_本文",
+        takenOn: "2026-09-30",
+      });
+    });
+
     it("shows the images once they are ready", async () => {
       const me = await user();
       const { postId } = await createPost(deps(), me.id, { uploadId: await uploaded(me.id) });
