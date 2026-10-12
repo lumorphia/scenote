@@ -1,4 +1,4 @@
-import { index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { date, index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { id, timestamps } from "./_common.ts";
 import { users } from "./users.ts";
 
@@ -50,6 +50,13 @@ export const posts = pgTable(
     blurhash: text("blurhash"),
     bytesDisplay: integer("bytes_display"),
     bytesThumb: integer("bytes_thumb"),
+    /** タイトルと本文。どちらも任意で、画像だけでも投稿できる (要件定義書 9 章) */
+    title: text("title"),
+    body: text("body"),
+    /** 撮影日。既定はブラウザが読んだファイルの更新日時の日付。利用者が変えたり消したりできる (要件定義書 9.2) */
+    takenOn: date("taken_on"),
+    /** 現像のレシピ (@lumorphia/editor-recipe)。画像には埋め込まず、ここに残す (ADR-0003) */
+    recipe: jsonb("recipe"),
     /** 受け付けなかった理由 (@lumorphia/media の ImageRejectedError の reason など) */
     failureReason: text("failure_reason"),
     publishedAt: timestamp("published_at", { withTimezone: true }),

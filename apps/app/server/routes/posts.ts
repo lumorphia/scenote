@@ -9,6 +9,9 @@ const ownPostSchema = z.object({
   id: z.string(),
   status: z.enum(["processing", "published", "failed"]),
   failureReason: z.string().nullable(),
+  title: z.string().nullable(),
+  body: z.string().nullable(),
+  takenOn: z.string().nullable(),
   image: z
     .object({
       display: z.string(),
@@ -21,7 +24,7 @@ const ownPostSchema = z.object({
   createdAt: z.date(),
 });
 
-/** 画像の受け取りと投稿 (docs/plan.md の S5a)。投稿の項目は S5b で足す */
+/** 画像の受け取りと投稿 (docs/plan.md の S5a・S5b) */
 export const postRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
     "/uploads",
@@ -61,7 +64,14 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
       schema: {
         tags: ["posts"],
         summary: "置いた画像で投稿する。公開は派生画像ができてから",
-        body: z.object({ uploadId: z.uuid() }),
+        body: z.object({
+          uploadId: z.uuid(),
+          title: z.string().nullish(),
+          body: z.string().nullish(),
+          takenOn: z.string().nullish(),
+          /** 現像のレシピ。中身はドメインが @lumorphia/editor-recipe で確かめる */
+          recipe: z.unknown().optional(),
+        }),
         response: withErrors({ 201: z.object({ postId: z.string() }) }),
       },
       config: { rateLimit: { max: 30, timeWindow: "1 minute" } },

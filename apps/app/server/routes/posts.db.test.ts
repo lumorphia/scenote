@@ -82,12 +82,12 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
       headers: { ...grant.upload.headers, origin: base().origin, host: base().host },
       payload: Buffer.from(body),
     });
-  const createPost = (cookie: string, uploadId: string) =>
+  const createPost = (cookie: string, uploadId: string, fields: object = {}) =>
     app.inject({
       method: "POST",
       url: "/api/posts",
       headers: mutating(cookie),
-      payload: { uploadId },
+      payload: { uploadId, ...fields },
     });
   const readPost = (cookie: string, id: string) =>
     app.inject({ method: "GET", url: `/api/posts/${id}`, headers: { cookie } });
@@ -138,6 +138,26 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
     expect(await published(cookie, postId)).toMatchObject({
       status: "published",
       image: { width: 800 },
+    });
+  });
+
+  it("keeps the title, the body and the day the photo was taken", async () => {
+    const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+    const grant = (
+      await askUpload(cookie, { mime: "image/webp", bytes: image.byteLength })
+    ).json() as Grant;
+    await put(grant, image);
+    const { postId } = (
+      await createPost(cookie, grant.uploadId, {
+        title: "テスト_夕焼け",
+        body: "テスト_本文",
+        takenOn: "2026-09-30",
+      })
+    ).json() as { postId: string };
+    expect((await readPost(cookie, postId)).json()).toMatchObject({
+      title: "テスト_夕焼け",
+      body: "テスト_本文",
+      takenOn: "2026-09-30",
     });
   });
 
