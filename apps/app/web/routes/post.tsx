@@ -3,6 +3,11 @@ import { Link, useParams } from "react-router";
 import { visibilityLabel, type Visibility } from "../features/post-form/visibility.ts";
 import { VisibilityField } from "../features/post-form/VisibilityField.tsx";
 import { TagsField } from "../features/post-form/TagsField.tsx";
+import {
+  PlaceField,
+  type PlaceRegion,
+  type PlaceValue,
+} from "../features/post-form/PlaceField.tsx";
 import type { Route } from "./+types/post";
 
 export function meta(_: Route.MetaArgs) {
@@ -19,6 +24,7 @@ type OwnPost = {
   body: string | null;
   takenOn: string | null;
   tags: { name: string; displayName: string }[];
+  place: { id: string | null; regionName: string | null; name: string } | null;
   image: { display: string; width: number; height: number } | null;
 };
 
@@ -85,6 +91,12 @@ export default function Post() {
       ) : null}
       {post.title ? <h1 className="text-xl font-semibold">{post.title}</h1> : null}
       {post.takenOn ? <p className="text-sm text-ink-muted">撮影日 {post.takenOn}</p> : null}
+      {post.place ? (
+        <p className="text-sm text-ink-muted" data-testid="post-place">
+          撮影場所 {post.place.regionName ? `${post.place.regionName} / ` : ""}
+          {post.place.name}
+        </p>
+      ) : null}
       {post.body ? <p className="whitespace-pre-wrap">{post.body}</p> : null}
       {post.tags.length ? (
         <ul className="flex flex-wrap gap-2 text-sm" aria-label="タグ" data-testid="post-tags">
@@ -94,6 +106,13 @@ export default function Post() {
             </li>
           ))}
         </ul>
+      ) : null}
+      {post.isOwner ? (
+        <PlaceEditor
+          postId={post.id}
+          value={post.place}
+          onSaved={(place) => setPost({ ...post, place })}
+        />
       ) : null}
       {post.isOwner ? (
         <TagsEditor
@@ -217,6 +236,85 @@ function TagsEditor({
         className="rounded-md border border-line px-3 py-1 hover:bg-surface-hover disabled:opacity-60"
       >
         タグを保存する
+      </button>
+      {message ? (
+        <p role="status" className="text-sm">
+          {message}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+/** 本人だけ。撮影場所を付け直す */
+function PlaceEditor({
+  postId,
+  value,
+  onSaved,
+}: {
+  postId: string;
+  value: OwnPost["place"];
+  onSaved: (place: OwnPost["place"]) => void;
+}) {
+  const [regions, setRegions] = useState<PlaceRegion[] | null>(null);
+  const [draft, setDraft] = useState<PlaceValue>({
+    placeId: value?.id ?? null,
+    placeText: value && !value.id ? value.name : "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/places")
+      .then((res) =>
+        res.ok ? (res.json() as Promise<{ regions: PlaceRegion[] }>) : { regions: [] },
+      )
+      .then((data) => {
+        if (active) setRegions(data.regions);
+      })
+      .catch(() => {
+        if (active) setRegions([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function save() {
+    setBusy(true);
+    setMessage(null);
+    const res = await fetch(`/api/posts/${encodeURIComponent(postId)}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        place: { placeId: draft.placeId, placeText: draft.placeText.trim() || null },
+      }),
+    }).catch(() => null);
+    const reread = res?.ok
+      ? await fetch(`/api/posts/${encodeURIComponent(postId)}`, { credentials: "same-origin" })
+          .then((r) => (r.ok ? (r.json() as Promise<{ place: OwnPost["place"] }>) : null))
+          .catch(() => null)
+      : null;
+    setBusy(false);
+    if (reread) {
+      onSaved(reread.place);
+      setMessage("撮影場所を保存しました。");
+    } else setMessage("撮影場所を保存できませんでした。もう一度お試しください。");
+  }
+
+  if (!regions) return null;
+  return (
+    <section className="space-y-3 rounded-md border border-line-soft p-4">
+      <PlaceField regions={regions} value={draft} onChange={setDraft} />
+      <button
+        type="button"
+        onClick={() => void save()}
+        disabled={busy}
+        className="rounded-md border border-line px-3 py-1 hover:bg-surface-hover disabled:opacity-60"
+      >
+        撮影場所を保存する
       </button>
       {message ? (
         <p role="status" className="text-sm">

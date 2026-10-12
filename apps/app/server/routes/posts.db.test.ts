@@ -238,6 +238,48 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
     ]);
   });
 
+  it("offers the shooting places by region, and keeps the chosen one", async () => {
+    await app.db.delete(schema.places);
+    const [limsa] = await app.db
+      .insert(schema.places)
+      .values({
+        sourceId: 28,
+        regionSourceId: 22,
+        regionName: "ラノシア",
+        name: "リムサ・ロミンサ：上甲板層",
+        kind: "town",
+        syncedAt: new Date(),
+      })
+      .returning();
+    const places = await app.inject({ method: "GET", url: "/api/places" });
+    expect(places.json()).toEqual({
+      regions: [
+        {
+          name: "ラノシア",
+          places: [{ id: limsa!.id, name: "リムサ・ロミンサ：上甲板層", kind: "town" }],
+        },
+      ],
+    });
+    const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+    const { postId } = await post(cookie, { placeId: limsa!.id });
+    expect((await readPost(cookie, postId)).json().place).toEqual({
+      id: limsa!.id,
+      regionName: "ラノシア",
+      name: "リムサ・ロミンサ：上甲板層",
+    });
+    await app.inject({
+      method: "PATCH",
+      url: `/api/posts/${postId}`,
+      headers: mutating(cookie),
+      payload: { place: { placeText: "テスト_ゴールドソーサー" } },
+    });
+    expect((await readPost(cookie, postId)).json().place).toEqual({
+      id: null,
+      regionName: null,
+      name: "テスト_ゴールドソーサー",
+    });
+  });
+
   it("does not let someone else change the visibility", async () => {
     const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
     const { cookie: other } = await loginWithLumorphia(app, mock, lumorphiaUser());

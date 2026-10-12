@@ -155,3 +155,34 @@ test("the owner can change the tags of a post", async ({ page }) => {
   await page.getByRole("button", { name: "タグを保存する" }).click();
   await expect(page.getByTestId("post-tags")).toHaveCount(0);
 });
+
+test("a shooting place chosen from the list appears on the post", async ({ page }) => {
+  await login(page, lumorphiaUser());
+  await sendToPostForm(page);
+  await page.getByRole("combobox", { name: "地域" }).selectOption("ラノシア");
+  await page
+    .getByRole("combobox", { name: "場所", exact: true })
+    .selectOption({ label: "中央ラノシア" });
+  await page.getByRole("button", { name: "投稿する" }).click();
+  await expect(page.getByTestId("post-place")).toHaveText("撮影場所 ラノシア / 中央ラノシア");
+});
+
+test("a shooting place not in the list can be written", async ({ page }) => {
+  await login(page, lumorphiaUser());
+  await sendToPostForm(page);
+  await page.getByRole("button", { name: "候補に無い場所を書く" }).click();
+  await page.getByLabel("場所の名前").fill("テスト_ゴールドソーサー");
+  await page.getByRole("button", { name: "投稿する" }).click();
+  await expect(page.getByTestId("post-place")).toHaveText("撮影場所 テスト_ゴールドソーサー");
+});
+
+test("the owner can change the shooting place", async ({ page }) => {
+  await login(page, lumorphiaUser());
+  await post(page);
+  await page.getByRole("combobox", { name: "地域" }).selectOption("黒衣森");
+  await page
+    .getByRole("combobox", { name: "場所", exact: true })
+    .selectOption({ label: "グリダニア：新市街" });
+  await page.getByRole("button", { name: "撮影場所を保存する" }).click();
+  await expect(page.getByTestId("post-place")).toHaveText("撮影場所 黒衣森 / グリダニア：新市街");
+});

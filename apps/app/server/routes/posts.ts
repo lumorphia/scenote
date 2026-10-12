@@ -1,7 +1,9 @@
 import { z } from "zod";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { createUpload, UPLOAD_MIMES } from "@lumorphia-scenote/core/domain/uploads";
+import { listPlaces } from "@lumorphia-scenote/core/domain/places";
 import {
+  changePlace,
   changeTags,
   changeVisibility,
   createPost,
@@ -22,6 +24,9 @@ const postSchema = z.object({
   body: z.string().nullable(),
   takenOn: z.string().nullable(),
   tags: z.array(z.object({ name: z.string(), displayName: z.string() })),
+  place: z
+    .object({ id: z.string().nullable(), regionName: z.string().nullable(), name: z.string() })
+    .nullable(),
   image: z
     .object({
       display: z.string(),
@@ -83,6 +88,8 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
           recipe: z.unknown().optional(),
           visibility: z.enum(VISIBILITIES).optional(),
           tags: z.array(z.string().max(200)).max(50).optional(),
+          placeId: z.uuid().nullish(),
+          placeText: z.string().max(500).nullish(),
         }),
         response: withErrors({ 201: z.object({ postId: z.string() }) }),
       },
@@ -96,6 +103,37 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
         req.body,
       );
       return reply.code(201).send(created);
+    },
+  );
+
+  app.get(
+    "/places",
+    {
+      schema: {
+        tags: ["posts"],
+        summary: "撮影場所の候補 (地域ごと)",
+        response: withErrors({
+          200: z.object({
+            regions: z.array(
+              z.object({
+                name: z.string(),
+                places: z.array(
+                  z.object({
+                    id: z.string(),
+                    name: z.string(),
+                    kind: z.enum(["town", "field", "inn", "housing"]),
+                  }),
+                ),
+              }),
+            ),
+          }),
+        }),
+      },
+    },
+    async (_req, reply) => {
+      // 地名は週 1 回しか変わらない。誰に返しても同じ
+      reply.header("cache-control", "public, max-age=3600");
+      return { regions: await listPlaces(app.db) };
     },
   );
 
@@ -136,6 +174,10 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
         body: z.object({
           visibility: z.enum(VISIBILITIES).optional(),
           tags: z.array(z.string().max(200)).max(50).optional(),
+          /** 撮影場所を付け直す。どちらも null なら外す */
+          place: z
+            .object({ placeId: z.uuid().nullish(), placeText: z.string().max(500).nullish() })
+            .optional(),
         }),
         response: withErrors({ 204: z.null() }),
       },
@@ -145,6 +187,7 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
     async (req, reply) => {
       const id = postId(req.params.id);
       if (req.body.tags) await changeTags({ db: app.db }, req.user!.id, id, req.body.tags);
+      if (req.body.place) await changePlace({ db: app.db }, req.user!.id, id, req.body.place);
       if (req.body.visibility)
         await changeVisibility(
           { db: app.db, jobs: app.jobs },
