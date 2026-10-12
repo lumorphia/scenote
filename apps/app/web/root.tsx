@@ -10,8 +10,9 @@ import {
 } from "react-router";
 import type { Route } from "./+types/root";
 import "./app.css";
+import { SiteHeader } from "./components/site-header.tsx";
 
-/** 全ルート共通。S2 は版と Sentry の設定だけ。ログイン状態はログインの段で足す */
+/** 全ルート共通。版と Sentry の設定。ログインの状態はヘッダーが /api/me から読む */
 export async function loader() {
   return {
     // CI が Docker の ARG で埋める。ローカルでは未設定
@@ -36,6 +37,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body className="min-h-dvh bg-surface text-ink antialiased">
+        <SiteHeader />
         {children}
         <ScrollRestoration />
         <Scripts />
