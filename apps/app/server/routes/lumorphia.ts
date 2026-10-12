@@ -3,6 +3,8 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { eq } from "drizzle-orm";
 import {
+  createAccountEventHandler,
+  createAccountEventVerifier,
   createBackchannelLogoutHandler,
   createLogoutTokenVerifier,
   createLogoutUrl,
@@ -13,6 +15,7 @@ import {
   consumeLumorphiaLogoutState,
   createLumorphiaLogoutState,
 } from "@lumorphia-scenote/core/domain/lumorphia-logout";
+import { applyLumorphiaAccountEvent } from "@lumorphia-scenote/core/domain/lumorphia-account-events";
 import { lumorphiaConfig } from "../env.ts";
 import { LUMORPHIA_SIGNED_OUT_PATH } from "../lumorphia-paths.ts";
 import { withErrors } from "../schemas/error.ts";
@@ -108,6 +111,20 @@ export const lumorphiaRoutes: FastifyPluginAsyncZod = async (app) => {
     verifyLogoutToken: createLogoutTokenVerifier(lumorphia),
     adapter: { logoutOnce: async (event) => void (await applyLumorphiaLogout(app.db, event)) },
   });
+  const handleAccountEvent = createAccountEventHandler({
+    verify: createAccountEventVerifier({ ...lumorphia, service: "scenote" }),
+    adapter: {
+      // 退会・復旧・物理削除の知らせを当てる (ADR-0010)。失敗は 500 で、accounts が送り直す
+      applyOnce: (event) =>
+        applyLumorphiaAccountEvent(app.db, {
+          eventId: event.eventId,
+          sub: event.sub,
+          revision: event.revision,
+          state: event.state,
+          deletedAt: event.deletedAt ? new Date(event.deletedAt) : null,
+        }),
+    },
+  });
   /** auth-client の受け口に Request を渡し、Response をそのまま返す */
   const forward = (handler: (request: Request) => Promise<Response>) =>
     async function (req: FastifyRequest, reply: FastifyReply) {
@@ -133,6 +150,11 @@ export const lumorphiaRoutes: FastifyPluginAsyncZod = async (app) => {
       "/lumorphia/backchannel-logout",
       { schema: { hide: true }, config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
       forward(handleLogout),
+    );
+    scope.post(
+      "/lumorphia/account-events",
+      { schema: { hide: true }, config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
+      forward(handleAccountEvent),
     );
   });
 };

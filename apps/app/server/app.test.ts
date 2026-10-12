@@ -143,6 +143,12 @@ describe("CSRF", () => {
     expect(res.statusCode).not.toBe(403);
   });
 
+  it("lets accounts send an account event without an Origin", async () => {
+    // サーバー間の POST で Origin が付かない。署名付きの知らせで守る (ADR-0010)
+    const res = await app.inject({ method: "POST", url: "/api/lumorphia/account-events" });
+    expect(res.statusCode).not.toBe(403);
+  });
+
   it("still requires an Origin next to the back-channel logout path", async () => {
     const res = await app.inject({ method: "POST", url: "/api/lumorphia/backchannel-logout/x" });
     expect(res.statusCode).toBe(403);
