@@ -1,2 +1,3 @@
-// Scenote のテーブル。ログインと投稿の段から足していく (docs/plan.md)
-export {};
+// Scenote のテーブル。段階ごとに足していく (docs/plan.md)
+export * from "./users.ts";
+export * from "./lumorphia.ts";
