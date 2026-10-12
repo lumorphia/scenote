@@ -1,0 +1,73 @@
+import { eq } from "drizzle-orm";
+import { ImageRejectedError, type ImageProcessor } from "@lumorphia/media";
+import { schema } from "@lumorphia-scenote/db";
+import { tmpKey, variantKey } from "../storage-keys.ts";
+import type { JobContext, JobDefinition } from "./context.ts";
+
+export type ImageProcessData = { postId: string };
+
+/** 削除後に CDN やブラウザに長く残らないよう短めにする (lumorphia/prismtone と同じ) */
+export const PUBLIC_IMAGE_CACHE_CONTROL = "public, max-age=3600, must-revalidate";
+
+/**
+ * 受け取った画像 (tmp/{uploadId}) を検証・再エンコードし、display と thumb を置いて投稿を公開する。
+ * 再エンコードで EXIF と WebP の拡張チャンク (再編集用 WebP の元画像を含む) は落ちる (ADR-0003)。
+ * 受け取った画像は、受け付けても断っても消す。同じ投稿に 2 回走っても、公開済みなら何もしない
+ */
+export function createImageProcessJob(processor: ImageProcessor): JobDefinition<ImageProcessData> {
+  return {
+    name: "image-process",
+    async handler({ postId }, ctx) {
+      const { db, storage, log } = ctx;
+      const post = await db.query.posts.findFirst({ where: eq(schema.posts.id, postId) });
+      if (!post || post.status !== "processing") return;
+      const upload = post.uploadId
+        ? await db.query.uploads.findFirst({ where: eq(schema.uploads.id, post.uploadId) })
+        : undefined;
+      const bytes = upload ? await storage.get(tmpKey(upload.id)) : null;
+      if (!upload || !bytes) return fail(ctx, postId, "missing_upload");
+
+      let variants;
+      try {
+        variants = await processor.process(bytes, upload.declaredMime);
+      } catch (e) {
+        if (!(e instanceof ImageRejectedError)) throw e;
+        await fail(ctx, postId, e.reason);
+        await storage.delete([tmpKey(upload.id)]);
+        return;
+      }
+
+      for (const variant of ["display", "thumb"] as const)
+        await storage.put({
+          key: variantKey(post.imageKeyBase, variant),
+          body: variants[variant],
+          contentType: "image/webp",
+          cacheControl: PUBLIC_IMAGE_CACHE_CONTROL,
+        });
+      await db
+        .update(schema.posts)
+        .set({
+          status: "published",
+          width: variants.width,
+          height: variants.height,
+          blurhash: variants.blurhash,
+          bytesDisplay: variants.display.byteLength,
+          bytesThumb: variants.thumb.byteLength,
+          uploadId: null,
+          failureReason: null,
+          publishedAt: new Date(),
+        })
+        .where(eq(schema.posts.id, postId));
+      await storage.delete([tmpKey(upload.id)]);
+      log.info({ postId }, "image processed");
+    },
+  };
+}
+
+async function fail(ctx: JobContext, postId: string, reason: string) {
+  await ctx.db
+    .update(schema.posts)
+    .set({ status: "failed", failureReason: reason, uploadId: null })
+    .where(eq(schema.posts.id, postId));
+  ctx.log.warn({ postId, reason }, "image rejected");
+}
