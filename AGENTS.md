@@ -28,6 +28,14 @@ scripts/        dev-certs.sh (開発と E2E の TLS)
 
 現像は lumorphia/editor のパッケージ (`@lumorphia/editor-*`) を版を固定して使う。Scenote 側のつなぎは `apps/app/web/features/editor-host/` (ホストの組み立て) と `web/routes/edit.tsx`。ホストに求められること (`/edit` だけ COOP / COEP、CSP の `'wasm-unsafe-eval'` と `worker-src`、`/models/` の配信、Tailwind の `@source`、Vite の `optimizeDeps`) は lumorphia/editor の ADR-0009 に従う。現像そのものを直すのは lumorphia/editor で、公開されたら版を上げる。下書きの IndexedDB の名前 (`scenote-editor`) は変えない
 
+## ログイン (ADR-0009)
+
+ログインは Lumorphia アカウントだけ。`@lumorphia/auth-client` を Better Auth の `genericOAuth` に渡す。handle・表示名・アイコンは Lumorphia の写しで、ログインのたびに書き換える。`LUMORPHIA_*` が揃っていないとログインは出ない (`.env.example`、`docs/runbook/lumorphia-client.md`)。
+
+- `/login` は `/api/lumorphia/login` へ、そこが accounts の認可へ 302 で送る。SSR の loader から自分の API を呼ばない (E2E は Fastify が https で受けるので)
+- E2E の発行元は `@lumorphia/e2e` の偽物 (3454・3455)。`approveLumorphia(page, user, LUMORPHIA)` で、次のログインで承認する利用者を決める (`e2e/login.spec.ts`)
+- サーバーのテストも同じ偽物をテストの中で起こす (`server/routes/lumorphia.db.test.ts`、CA は `server/test/lumorphia-tls-setup.ts`)
+
 ## 依存の方向 (ESLint が強制する)
 
 ```
