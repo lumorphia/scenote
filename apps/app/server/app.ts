@@ -12,6 +12,9 @@ import { loadEnv, type Env } from "./env.ts";
 import { clientIp } from "./client-ip.ts";
 import { dbPlugin } from "./plugins/db.ts";
 import { modelsPlugin } from "./plugins/models.ts";
+import { authPlugin } from "./plugins/auth.ts";
+import { meRoutes } from "./routes/me.ts";
+import { lumorphiaRoutes } from "./routes/lumorphia.ts";
 import { securityPlugin } from "./plugins/security.ts";
 import { errorsPlugin } from "./plugins/errors.ts";
 import { healthRoutes } from "./routes/health.ts";
@@ -74,6 +77,8 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
     exposeStatusRoute: false,
   });
 
+  if (!opts.skipDb) await app.register(authPlugin);
+
   // 現像の認識のモデルと WASM (/models/)。React Router の catch-all より先に登録する
   await app.register(modelsPlugin, opts.modelsDir ? { root: opts.modelsDir } : {});
 
@@ -91,6 +96,10 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
         allowList: () => rateLimitDisabled,
       });
       await api.register(healthRoutes);
+      if (!opts.skipDb) {
+        await api.register(meRoutes);
+        await api.register(lumorphiaRoutes);
+      }
       // /api 配下の未知のパスは React Router の catch-all (/*) ではなく JSON の 404 を返す
       api.all("/*", { schema: { hide: true } }, async (req, reply) => {
         return reply.code(404).send({
