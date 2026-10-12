@@ -19,6 +19,11 @@ export const users = pgTable(
     handle: text("handle").notNull(),
     /** Lumorphia アカウントの sub */
     lumorphiaSub: text("lumorphia_sub").notNull(),
+    /** 退会は accounts で始まり、知らせで deleted にする。30 日以内の復旧で active に戻る (ADR-0010) */
+    status: text("status", { enum: ["active", "deleted"] })
+      .notNull()
+      .default("active"),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [

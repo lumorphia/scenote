@@ -15,6 +15,13 @@
       "when": 1791790706728,
       "tag": "0001_login",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791792096168,
+      "tag": "0002_account_events",
+      "breakpoints": true
     }
   ]
 }

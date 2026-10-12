@@ -1,4 +1,4 @@
-import { index, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { id } from "./_common.ts";
 
 /**
@@ -19,4 +19,20 @@ export const lumorphiaLogoutReceipts = pgTable(
     uniqueIndex("lumorphia_logout_receipts_jti_idx").on(t.issuer, t.clientId, t.jti),
     index("lumorphia_logout_receipts_expires_idx").on(t.expiresAt),
   ],
+);
+
+/**
+ * 受け取った Lumorphia の退会・復旧・物理削除の知らせ (ADR-0010)。同じ知らせ (event_id) を 1 回だけ当て、
+ * sub ごとに最後に当てた revision より古いものは当てない (lumorphia/prismtone の ADR-0058 と同じ)
+ */
+export const lumorphiaAccountEvents = pgTable(
+  "lumorphia_account_events",
+  {
+    eventId: text("event_id").primaryKey(),
+    sub: text("sub").notNull(),
+    revision: integer("revision").notNull(),
+    state: text("state", { enum: ["active", "deleted", "purged"] }).notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("lumorphia_account_events_sub_idx").on(t.sub, t.revision)],
 );
