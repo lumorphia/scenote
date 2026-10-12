@@ -1,9 +1,10 @@
 /**
  * Content-Security-Policy の組み立て。lumorphia/accounts の csp.ts (元は lumorphia/prismtone の RM-28) を、
- * 骨組みに要るものだけにした。現像 (lumorphia/editor) の画面に要るもの (WebAssembly、blob:、モデルの配信元) は、
- * editor の ADR-0009 に従って現像の段で足す
- * - script-src: 自分と、SSR が出すインラインスクリプトのリクエストごとの nonce だけ。eval も WebAssembly も使わない
- * - img-src: 自分、投稿画像の配信元、data:
+ * Scenote に要るものだけにした。現像 (lumorphia/editor) に要るものは editor の ADR-0009 に従う
+ * - script-src: 自分と、SSR が出すインラインスクリプトのリクエストごとの nonce。現像の描画と認識の WASM に
+ *   'wasm-unsafe-eval'。'unsafe-eval' と 'unsafe-inline' は入れない
+ * - img-src: 自分、投稿画像の配信元、data: と blob: (現像のプレビュー)
+ * - worker-src: 現像の認識の Worker (自分と blob:)。モデルは同じオリジンの /models/ から読む
  * - connect-src: 自分と Sentry
  * - style-src: React の style 属性のために 'unsafe-inline'
  */
@@ -39,11 +40,12 @@ function unique(values: (string | null)[]): string[] {
 export function buildCspDirectives(input: CspInput): CspDirectives {
   return {
     "default-src": ["'self'"],
-    "script-src": ["'self'", `'nonce-${input.nonce}'`],
+    "script-src": ["'self'", `'nonce-${input.nonce}'`, "'wasm-unsafe-eval'"],
     "style-src": ["'self'", "'unsafe-inline'"],
-    "img-src": unique(["'self'", originOf(input.imageBaseUrl), "data:"]),
+    "img-src": unique(["'self'", originOf(input.imageBaseUrl), "data:", "blob:"]),
     "font-src": ["'self'", "data:"],
     "connect-src": unique(["'self'", originOf(input.sentryDsn)]),
+    "worker-src": ["'self'", "blob:"],
     "frame-ancestors": ["'none'"],
     "form-action": ["'self'"],
     "base-uri": ["'self'"],

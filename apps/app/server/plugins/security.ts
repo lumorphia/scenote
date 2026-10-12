@@ -4,6 +4,13 @@ import helmet from "@fastify/helmet";
 import { buildCspDirectives, CSP_NONCE_HEADER, CSP_REPORT_PATH, serializeCsp } from "../csp.ts";
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const DOCUMENT_DESTINATIONS = new Set(["document", "iframe", "frame"]);
+
+/** COEP を付けるか。現像の文書 (/edit) と、文書以外の全部の応答 */
+function needsCrossOriginIsolation(url: string, dest: string | undefined): boolean {
+  const isEditDocument = url === "/edit" || url.startsWith("/edit?");
+  return isEditDocument || (dest !== undefined && !DOCUMENT_DESTINATIONS.has(dest));
+}
 
 /**
  * HTTP ヘッダと CSRF (lumorphia/prismtone の security plugin と同じ考え方)。
@@ -25,6 +32,14 @@ export const securityPlugin = fp(
 
     app.addHook("onRequest", async (req, reply) => {
       reply.header("permissions-policy", "camera=(), microphone=(), geolocation=()");
+      // 現像 (/edit) だけ cross-origin isolated にして SharedArrayBuffer を使えるようにする (lumorphia/editor の
+      // ADR-0009)。切り抜き (onnxruntime-web) がマルチスレッドで動く。COOP same-origin は helmet が付けている。
+      // COEP のある文書から起こす専用 Worker は、そのスクリプトと import 先の応答にも COEP が要る (Chrome)。
+      // 文書以外 (Sec-Fetch-Dest が document / frame でない) には全部付ける (Worker 以外には効かない)。
+      // URL で絞ると dev の Vite が配る /web/ や /node_modules/ が漏れる (lumorphia/prismtone と同じ)
+      if (needsCrossOriginIsolation(req.url, req.headers["sec-fetch-dest"])) {
+        reply.header("cross-origin-embedder-policy", "credentialless");
+      }
       if (!cspEnabled) return;
       const nonce = randomBytes(16).toString("base64url");
       req.cspNonce = nonce;

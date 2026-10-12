@@ -11,6 +11,7 @@ import { loggerOptions } from "@lumorphia/ops/logger";
 import { loadEnv, type Env } from "./env.ts";
 import { clientIp } from "./client-ip.ts";
 import { dbPlugin } from "./plugins/db.ts";
+import { modelsPlugin } from "./plugins/models.ts";
 import { securityPlugin } from "./plugins/security.ts";
 import { errorsPlugin } from "./plugins/errors.ts";
 import { healthRoutes } from "./routes/health.ts";
@@ -21,6 +22,8 @@ export type BuildAppOptions = {
   env?: Env;
   /** テストで DB をつながずに組み立てる。DB を使うと失敗する */
   skipDb?: boolean;
+  /** テスト用: 認識のモデルの置き場を差し替える (既定は apps/app/models。`pnpm models` が揃える) */
+  modelsDir?: string;
   /** テスト用: 未知の 500 エラーの外部通知を差し替える */
   captureException?: CaptureException;
 };
@@ -70,6 +73,9 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
     maxHeapUsedBytes: 1_500_000_000,
     exposeStatusRoute: false,
   });
+
+  // 現像の認識のモデルと WASM (/models/)。React Router の catch-all より先に登録する
+  await app.register(modelsPlugin, opts.modelsDir ? { root: opts.modelsDir } : {});
 
   // E2E 専用。production では無視する
   const rateLimitDisabled = env.API_RATE_LIMIT_DISABLED && env.NODE_ENV !== "production";
