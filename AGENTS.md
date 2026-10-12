@@ -59,6 +59,7 @@ Lumorphia アカウントのクライアントは https かつループバック
 
 - 証明書は `pnpm dev:certs` (`scripts/dev-certs.sh`) が `.data/tls/` に作る手元専用の CA と `*.lumorphia.test` の証明書。git に入れない
 - **開発**: Vite の開発サーバーは http (127.0.0.1:3200)。compose の Caddy が `https://scenote.lumorphia.test:8445` で受けて流す。Vite 8 は https にすると必ず HTTP/2 になり、その疑似ヘッダー (`:method`) を `@mcansh/react-router-fastify` が扱えないため、Vite には https を持たせない。ブラウザで開くには hosts に `127.0.0.1 scenote.lumorphia.test` を足し、`.data/tls/ca.pem` を信頼させる
+- 開発サーバーは `packages/*` の変更や、表の追加 (マイグレーション) を取り込み損ねることがある (Better Auth の `SCHEMA_MISMATCH` や、古い関数のまま動く)。そのときは開発サーバーを立て直す
 - **E2E**: Fastify が直接 https で待ち受ける (`DEV_TLS_*`、`server/tls.ts`)。本番と同じビルドで、HTTP/1.1
 - **本番**: Caddy が TLS を受ける (本番の段で作る)。`DEV_TLS_*` は production では無視する
 
