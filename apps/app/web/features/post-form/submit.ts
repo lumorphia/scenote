@@ -7,6 +7,7 @@ export type SubmitInput = {
   takenOn: string;
   recipe: unknown;
   visibility: "public" | "unlisted" | "private";
+  tags: readonly string[];
 };
 
 export class SubmitError extends Error {
@@ -57,6 +58,7 @@ export async function submitPost(
       takenOn: input.takenOn || null,
       recipe: input.recipe,
       visibility: input.visibility,
+      tags: input.tags,
     }),
   });
   if (!created.ok) throw new SubmitError("post", created.status);

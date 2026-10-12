@@ -129,3 +129,29 @@ test("making a post private hides it from others at once", async ({ page, browse
   await page.reload();
   await expect(page.getByTestId("post-image")).toBeVisible();
 });
+
+test("tags written on the form appear on the post", async ({ page }) => {
+  await login(page, lumorphiaUser());
+  await sendToPostForm(page);
+  const tag = page.getByRole("textbox", { name: /タグ/ });
+  await tag.fill("#夕焼け");
+  await tag.press("Enter");
+  await tag.fill("旅");
+  await page.getByRole("button", { name: "追加" }).click();
+  await expect(page.getByRole("list", { name: "付けたタグ" })).toContainText("#夕焼け");
+  await page.getByRole("button", { name: "投稿する" }).click();
+  await expect(page.getByTestId("post-tags")).toHaveText(/#夕焼け\s*#旅/);
+});
+
+test("the owner can change the tags of a post", async ({ page }) => {
+  await login(page, lumorphiaUser());
+  await post(page);
+  const tag = page.getByRole("textbox", { name: /タグ/ });
+  await tag.fill("夜景");
+  await tag.press("Enter");
+  await page.getByRole("button", { name: "タグを保存する" }).click();
+  await expect(page.getByTestId("post-tags")).toHaveText("#夜景");
+  await page.getByRole("button", { name: "#夜景 を外す" }).click();
+  await page.getByRole("button", { name: "タグを保存する" }).click();
+  await expect(page.getByTestId("post-tags")).toHaveCount(0);
+});

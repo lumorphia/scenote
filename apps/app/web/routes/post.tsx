@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { visibilityLabel, type Visibility } from "../features/post-form/visibility.ts";
 import { VisibilityField } from "../features/post-form/VisibilityField.tsx";
+import { TagsField } from "../features/post-form/TagsField.tsx";
 import type { Route } from "./+types/post";
 
 export function meta(_: Route.MetaArgs) {
@@ -17,6 +18,7 @@ type OwnPost = {
   title: string | null;
   body: string | null;
   takenOn: string | null;
+  tags: { name: string; displayName: string }[];
   image: { display: string; width: number; height: number } | null;
 };
 
@@ -84,6 +86,22 @@ export default function Post() {
       {post.title ? <h1 className="text-xl font-semibold">{post.title}</h1> : null}
       {post.takenOn ? <p className="text-sm text-ink-muted">撮影日 {post.takenOn}</p> : null}
       {post.body ? <p className="whitespace-pre-wrap">{post.body}</p> : null}
+      {post.tags.length ? (
+        <ul className="flex flex-wrap gap-2 text-sm" aria-label="タグ" data-testid="post-tags">
+          {post.tags.map((tag) => (
+            <li key={tag.name} className="rounded-full bg-surface-muted px-3 py-1">
+              #{tag.displayName}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {post.isOwner ? (
+        <TagsEditor
+          postId={post.id}
+          value={post.tags.map((t) => t.displayName)}
+          onSaved={(tags) => setPost({ ...post, tags })}
+        />
+      ) : null}
       {post.isOwner ? (
         <VisibilityEditor
           postId={post.id}
@@ -141,6 +159,64 @@ function VisibilityEditor({
         className="rounded-md border border-line px-3 py-1 hover:bg-surface-hover disabled:opacity-60"
       >
         公開範囲を変える
+      </button>
+      {message ? (
+        <p role="status" className="text-sm">
+          {message}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+/** 本人だけ。タグを付け直す */
+function TagsEditor({
+  postId,
+  value,
+  onSaved,
+}: {
+  postId: string;
+  value: string[];
+  onSaved: (tags: { name: string; displayName: string }[]) => void;
+}) {
+  const [draft, setDraft] = useState<string[]>(value);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const changed = draft.join("\u0000") !== value.join("\u0000");
+
+  async function save() {
+    setBusy(true);
+    setMessage(null);
+    const res = await fetch(`/api/posts/${encodeURIComponent(postId)}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ tags: draft }),
+    }).catch(() => null);
+    const reread = res?.ok
+      ? await fetch(`/api/posts/${encodeURIComponent(postId)}`, { credentials: "same-origin" })
+          .then((r) =>
+            r.ok ? (r.json() as Promise<{ tags: { name: string; displayName: string }[] }>) : null,
+          )
+          .catch(() => null)
+      : null;
+    setBusy(false);
+    if (reread) {
+      onSaved(reread.tags);
+      setMessage("タグを保存しました。");
+    } else setMessage("タグを保存できませんでした。もう一度お試しください。");
+  }
+
+  return (
+    <section className="space-y-3 rounded-md border border-line-soft p-4">
+      <TagsField value={draft} onChange={setDraft} />
+      <button
+        type="button"
+        onClick={() => void save()}
+        disabled={busy || !changed}
+        className="rounded-md border border-line px-3 py-1 hover:bg-surface-hover disabled:opacity-60"
+      >
+        タグを保存する
       </button>
       {message ? (
         <p role="status" className="text-sm">
