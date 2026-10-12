@@ -17,7 +17,7 @@ lumorphia/scenote: FINAL FANTASY XIV で撮った風景・日常・旅・記念�
 
 ```
 apps/app        React Router (SSR) + Fastify。画面と API
-packages/core   ドメイン (今は DomainError だけ。投稿の段から足す)
+packages/core   ドメイン (ログイン、退会の知らせ、受け取りと投稿) と pg-boss のジョブ (jobs/)
 packages/db     Drizzle のスキーマとマイグレーション、ファイルごとの専用 DB を作るテストの仕組み
 e2e/            Playwright。https の scenote.lumorphia.test で回す
 docker/         開発の Caddy (Caddyfile.dev)
@@ -35,6 +35,14 @@ scripts/        dev-certs.sh (開発と E2E の TLS)
 - `/login` は `/api/lumorphia/login` へ、そこが accounts の認可へ 302 で送る。SSR の loader から自分の API を呼ばない (E2E は Fastify が https で受けるので)
 - E2E の発行元は `@lumorphia/e2e` の偽物 (3454・3455)。`approveLumorphia(page, user, LUMORPHIA)` で、次のログインで承認する利用者を決める (`e2e/login.spec.ts`)
 - サーバーのテストも同じ偽物をテストの中で起こす (`server/routes/lumorphia.db.test.ts`、CA は `server/test/lumorphia-tls-setup.ts`)
+
+## 投稿の画像 (ADR-0011)
+
+ブラウザは署名付き PUT で一時置き場 (`tmp/`) に置き、worker の `image-process` が `@lumorphia/media` で派生画像 (display・thumb) を作って公開する。原本は持たない (ADR-0003)。
+
+- 開発とテストの置き場所は手元のファイル (`.data/storage`)、アプリ自身が `/_storage` で受け取って配る (`server/storage-config.ts`、`plugins/dev-storage.ts`)。E2E はメモリ
+- 開発と E2E はジョブをアプリの中で走らせる (`JOBS_INLINE`、既定で有効)。本番は `pnpm --filter @lumorphia-scenote/app worker`
+- テストの画像はテストの中で sharp で作る。EXIF や拡張チャンクが落ちることは `packages/core/src/jobs/image-process.db.test.ts` で確かめる
 
 ## 依存の方向 (ESLint が強制する)
 
@@ -88,6 +96,7 @@ Lumorphia アカウントのクライアントは https かつループバック
 ```sh
 docker compose up -d                        # 開発の Postgres (5435) と Caddy (8445)
 pnpm --filter @lumorphia-scenote/app dev    # 開発サーバー (Caddy の後ろ、https://scenote.lumorphia.test:8445)
+pnpm --filter @lumorphia-scenote/app worker # ジョブの worker (開発は JOBS_INLINE=0 のときだけ要る)
 pnpm db:generate && pnpm db:migrate         # スキーマ変更後
 pnpm test                                   # 単体・DB テスト
 pnpm e2e                                    # Playwright (https)
