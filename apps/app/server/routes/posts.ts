@@ -1,13 +1,21 @@
 import { z } from "zod";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { createUpload, UPLOAD_MIMES } from "@lumorphia-scenote/core/domain/uploads";
-import { createPost, getOwnPost } from "@lumorphia-scenote/core/domain/posts";
+import {
+  changeVisibility,
+  createPost,
+  getPost,
+  readPostImage,
+  VISIBILITIES,
+} from "@lumorphia-scenote/core/domain/posts";
 import { DomainError } from "@lumorphia-scenote/core";
 import { withErrors } from "../schemas/error.ts";
 
-const ownPostSchema = z.object({
+const postSchema = z.object({
   id: z.string(),
   status: z.enum(["processing", "published", "failed"]),
+  visibility: z.enum(VISIBILITIES),
+  isOwner: z.boolean(),
   failureReason: z.string().nullable(),
   title: z.string().nullable(),
   body: z.string().nullable(),
@@ -71,6 +79,7 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
           takenOn: z.string().nullish(),
           /** 現像のレシピ。中身はドメインが @lumorphia/editor-recipe で確かめる */
           recipe: z.unknown().optional(),
+          visibility: z.enum(VISIBILITIES).optional(),
         }),
         response: withErrors({ 201: z.object({ postId: z.string() }) }),
       },
@@ -87,27 +96,78 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
     },
   );
 
+  /** ID の形でないものは、無い投稿と同じに答える */
+  const postId = (id: string) => {
+    if (!z.uuid().safeParse(id).success) throw new DomainError("not_found", "post not found");
+    return id;
+  };
+
   app.get(
     "/posts/:id",
     {
       schema: {
         tags: ["posts"],
-        summary: "自分の投稿",
+        summary: "投稿。見られるかは公開範囲で決まる (ADR-0004)",
         params: z.object({ id: z.string() }),
-        response: withErrors({ 200: ownPostSchema }),
+        response: withErrors({ 200: postSchema }),
       },
-      preValidation: [app.requireAuth],
+      preValidation: [app.optionalAuth],
     },
     async (req, reply) => {
       reply.header("cache-control", "no-store");
-      // ID の形でないものは、無い投稿と同じに答える
-      if (!z.uuid().safeParse(req.params.id).success)
-        throw new DomainError("not_found", "post not found");
-      return getOwnPost(
+      return getPost(
         { db: app.db, imageBaseUrl: app.env.PUBLIC_IMAGE_BASE_URL },
-        req.user!.id,
-        req.params.id,
+        req.user?.id ?? null,
+        postId(req.params.id),
       );
+    },
+  );
+
+  app.patch(
+    "/posts/:id",
+    {
+      schema: {
+        tags: ["posts"],
+        summary: "公開範囲を変える。画像は新しい URL に移る",
+        params: z.object({ id: z.string() }),
+        body: z.object({ visibility: z.enum(VISIBILITIES) }),
+        response: withErrors({ 204: z.null() }),
+      },
+      config: { rateLimit: { max: 30, timeWindow: "1 minute" } },
+      preValidation: [app.requireAuth],
+    },
+    async (req, reply) => {
+      await changeVisibility(
+        { db: app.db, jobs: app.jobs },
+        req.user!.id,
+        postId(req.params.id),
+        req.body.visibility,
+      );
+      return reply.code(204).send(null);
+    },
+  );
+
+  // 非公開の画像の中継 (ADR-0012)。共有のキャッシュ (Cloudflare) にもブラウザの保存にも載せない
+  app.get(
+    "/posts/:id/image/:variant",
+    {
+      schema: {
+        tags: ["posts"],
+        summary: "非公開の投稿の画像を本人に返す",
+        params: z.object({ id: z.string(), variant: z.enum(["display", "thumb"]) }),
+      },
+      preValidation: [app.optionalAuth],
+    },
+    async (req, reply) => {
+      const image = await readPostImage(
+        { db: app.db, storage: app.storage },
+        req.user?.id ?? null,
+        postId(req.params.id),
+        req.params.variant,
+      );
+      reply.header("cache-control", "private, no-store");
+      reply.header("content-type", image.contentType);
+      return reply.send(Buffer.from(image.body));
     },
   );
 };

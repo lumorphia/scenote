@@ -99,12 +99,12 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
     }
     throw new Error("the post stayed processing");
   }
-  async function post(cookie: string) {
+  async function post(cookie: string, fields: object = {}) {
     const grant = (
       await askUpload(cookie, { mime: "image/webp", bytes: image.byteLength })
     ).json() as Grant;
     await put(grant, image);
-    return (await createPost(cookie, grant.uploadId)).json() as { postId: string };
+    return (await createPost(cookie, grant.uploadId, fields)).json() as { postId: string };
   }
 
   it("refuses to hand out an upload without a login", async () => {
@@ -170,11 +170,66 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
     expect(res.headers["content-type"]).toBe("image/webp");
   });
 
-  it("does not show a post to another person", async () => {
+  it("shows a public post to anyone", async () => {
+    const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+    const { postId } = await post(cookie);
+    await published(cookie, postId);
+    expect((await readPost("", postId)).json()).toMatchObject({
+      visibility: "public",
+      isOwner: false,
+    });
+  });
+
+  it("does not show a private post to another person", async () => {
+    const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+    const { cookie: other } = await loginWithLumorphia(app, mock, lumorphiaUser());
+    const { postId } = await post(cookie, { visibility: "private" });
+    await published(cookie, postId);
+    expect((await readPost(other, postId)).statusCode).toBe(404);
+  });
+
+  it("serves a private image only to its owner, and keeps it out of shared caches", async () => {
+    const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+    const { cookie: other } = await loginWithLumorphia(app, mock, lumorphiaUser());
+    const { postId } = await post(cookie, { visibility: "private" });
+    const { image: made } = await published(cookie, postId);
+    expect(made!.display).toBe(`/api/posts/${postId}/image/display`);
+    const mine = await app.inject({ method: "GET", url: made!.display, headers: { cookie } });
+    expect(mine.statusCode).toBe(200);
+    expect(mine.headers["content-type"]).toBe("image/webp");
+    expect(mine.headers["cache-control"]).toBe("private, no-store");
+    expect(
+      (await app.inject({ method: "GET", url: made!.display, headers: { cookie: other } }))
+        .statusCode,
+    ).toBe(404);
+    expect((await app.inject({ method: "GET", url: made!.display })).statusCode).toBe(404);
+  });
+
+  it("lets the owner make a post private, and hides it at once", async () => {
+    const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+    const { postId } = await post(cookie);
+    await published(cookie, postId);
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/posts/${postId}`,
+      headers: mutating(cookie),
+      payload: { visibility: "private" },
+    });
+    expect(res.statusCode).toBe(204);
+    expect((await readPost("", postId)).statusCode).toBe(404);
+  });
+
+  it("does not let someone else change the visibility", async () => {
     const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
     const { cookie: other } = await loginWithLumorphia(app, mock, lumorphiaUser());
     const { postId } = await post(cookie);
-    expect((await readPost(other, postId)).statusCode).toBe(404);
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/posts/${postId}`,
+      headers: mutating(other),
+      payload: { visibility: "private" },
+    });
+    expect(res.statusCode).toBe(404);
   });
 
   it("answers 404 for a post ID that is not one", async () => {

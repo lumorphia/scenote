@@ -6,6 +6,7 @@ export type SubmitInput = {
   /** YYYY-MM-DD。空なら撮影日なし */
   takenOn: string;
   recipe: unknown;
+  visibility: "public" | "unlisted" | "private";
 };
 
 export class SubmitError extends Error {
@@ -55,6 +56,7 @@ export async function submitPost(
       body: input.body.trim() || null,
       takenOn: input.takenOn || null,
       recipe: input.recipe,
+      visibility: input.visibility,
     }),
   });
   if (!created.ok) throw new SubmitError("post", created.status);

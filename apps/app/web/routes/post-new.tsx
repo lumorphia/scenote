@@ -8,6 +8,8 @@ import {
 } from "../features/post-form/pending.ts";
 import { submitErrorMessage, submitPost } from "../features/post-form/submit.ts";
 import { takenOnFrom } from "../features/post-form/taken-on.ts";
+import type { Visibility } from "../features/post-form/visibility.ts";
+import { VisibilityField } from "../features/post-form/VisibilityField.tsx";
 import { loginHref } from "../lib/login.ts";
 
 export function meta(_: Route.MetaArgs) {
@@ -61,6 +63,7 @@ function PostForm({ pending, signedIn }: { pending: PendingPost; signedIn: boole
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [takenOn, setTakenOn] = useState(() => takenOnFrom(pending.lastModified));
+  const [visibility, setVisibility] = useState<Visibility>("public");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,6 +78,7 @@ function PostForm({ pending, signedIn }: { pending: PendingPost; signedIn: boole
         body,
         takenOn,
         recipe: pending.recipe,
+        visibility,
       });
       await clearPendingPost();
       navigate(`/posts/${postId}`);
@@ -133,6 +137,7 @@ function PostForm({ pending, signedIn }: { pending: PendingPost; signedIn: boole
             className="rounded-md border border-line bg-surface px-3 py-2"
           />
         </label>
+        <VisibilityField value={visibility} onChange={setVisibility} />
         <div className="space-y-1 rounded-md border border-line-soft bg-surface-muted p-3 text-sm">
           <p>
             他の人が写っている場合は、本人の了承を得てください。名前などは現像のぼかしで隠せます。

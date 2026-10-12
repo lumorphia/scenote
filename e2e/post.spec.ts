@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Browser, Page } from "@playwright/test";
 import { approveLumorphia, lumorphiaUser, type MockLumorphiaUser } from "@lumorphia/e2e/playwright";
 import { expect, test } from "./test.ts";
 import { gotoHydrated, openEditorWithImage } from "./helpers.ts";
@@ -61,19 +61,71 @@ test("the post form without a photo leads back to the editor", async ({ page }) 
   await expect(page.getByRole("link", { name: "現像する" })).toHaveAttribute("href", "/edit");
 });
 
-test("someone else's post is not shown", async ({ page, browser }) => {
-  await login(page, lumorphiaUser());
+/** もう 1 人の利用者でログインしたページで、url を開く */
+async function asSomeoneElse(browser: Browser, url: string) {
+  const other = await browser.newPage();
+  await login(other, lumorphiaUser());
+  await other.goto(url);
+  return other;
+}
+
+async function post(page: Page, visibility?: "公開" | "限定公開" | "非公開") {
   await sendToPostForm(page);
+  if (visibility) await page.getByRole("radio", { name: new RegExp(`^${visibility}`) }).check();
   await page.getByRole("button", { name: "投稿する" }).click();
   await expect(page.getByTestId("post-image")).toBeVisible();
-  const url = page.url();
-  const other = await browser.newPage();
+}
+
+test("a post is public unless the user chooses otherwise", async ({ page }) => {
+  await login(page, lumorphiaUser());
+  await sendToPostForm(page);
+  await expect(page.getByRole("radio", { name: /^公開/ })).toBeChecked();
+});
+
+test("someone else can see a public post", async ({ page, browser }) => {
+  await login(page, lumorphiaUser());
+  await post(page);
+  const other = await asSomeoneElse(browser, page.url());
   try {
-    await login(other, lumorphiaUser());
-    await other.goto(url);
+    await expect(other.getByTestId("post-image")).toBeVisible();
+    await expect(other.getByTestId("post-visibility")).toHaveCount(0);
+  } finally {
+    await other.close();
+  }
+});
+
+test("a private post shows its photo to the owner and nothing to others", async ({
+  page,
+  browser,
+}) => {
+  await login(page, lumorphiaUser());
+  await post(page, "非公開");
+  await expect(page.getByTestId("post-visibility")).toHaveText("非公開");
+  await expect(page.getByTestId("post-image")).toHaveJSProperty("complete", true);
+  expect(
+    await page.getByTestId("post-image").evaluate((img: HTMLImageElement) => img.naturalWidth),
+  ).toBeGreaterThan(0);
+  const other = await asSomeoneElse(browser, page.url());
+  try {
     await expect(other.getByText("投稿が見つかりません")).toBeVisible();
     await expect(other.getByTestId("post-image")).toHaveCount(0);
   } finally {
     await other.close();
   }
+});
+
+test("making a post private hides it from others at once", async ({ page, browser }) => {
+  await login(page, lumorphiaUser());
+  await post(page);
+  await page.getByRole("radio", { name: /^非公開/ }).check();
+  await page.getByRole("button", { name: "公開範囲を変える" }).click();
+  await expect(page.getByTestId("post-visibility")).toHaveText("非公開");
+  const other = await asSomeoneElse(browser, page.url());
+  try {
+    await expect(other.getByText("投稿が見つかりません")).toBeVisible();
+  } finally {
+    await other.close();
+  }
+  await page.reload();
+  await expect(page.getByTestId("post-image")).toBeVisible();
 });
