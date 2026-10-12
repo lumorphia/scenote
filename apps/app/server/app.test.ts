@@ -137,6 +137,17 @@ describe("CSRF", () => {
     expect(res.json().error.message).toBe("origin mismatch");
   });
 
+  it("lets accounts send a back-channel logout without an Origin", async () => {
+    // サーバー間の POST で Origin が付かない。署名付きの Logout Token で守る (ADR-0009)
+    const res = await app.inject({ method: "POST", url: "/api/lumorphia/backchannel-logout" });
+    expect(res.statusCode).not.toBe(403);
+  });
+
+  it("still requires an Origin next to the back-channel logout path", async () => {
+    const res = await app.inject({ method: "POST", url: "/api/lumorphia/backchannel-logout/x" });
+    expect(res.statusCode).toBe(403);
+  });
+
   it("lets a same-origin mutating request reach the route", async () => {
     const res = await app.inject({
       method: "POST",
