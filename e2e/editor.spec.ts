@@ -1,37 +1,9 @@
-import type { Page } from "@playwright/test";
 import { expect, test } from "./test.ts";
-import { gotoHydrated } from "./helpers.ts";
+import { gotoHydrated, openEditorWithImage } from "./helpers.ts";
 
 // 現像は @lumorphia/editor-* (lumorphia/editor)。描画・マスク・推論そのものの E2E はあちらにあり、ここでは
 // Scenote に組み込んだつなぎ目だけを確かめる: cross-origin isolation、CSP の下での Worker と WASM、
 // /models/ の配信、UI のクラスが CSS に入っていること (lumorphia/editor の ADR-0009)
-
-/** テスト画像 (4 色のブロック、200x100)。運営者以外の人のデータを入れないよう、画像はテストの中で作る */
-async function makePng(page: Page): Promise<Buffer> {
-  const dataUrl = await page.evaluate(() => {
-    const c = document.createElement("canvas");
-    c.width = 200;
-    c.height = 100;
-    const ctx = c.getContext("2d")!;
-    ["rgb(200,40,60)", "rgb(40,180,80)", "rgb(50,90,220)", "rgb(128,128,128)"].forEach(
-      (color, i) => {
-        ctx.fillStyle = color;
-        ctx.fillRect(i * 50, 0, 50, 100);
-      },
-    );
-    return c.toDataURL("image/png");
-  });
-  return Buffer.from(dataUrl.split(",")[1]!, "base64");
-}
-
-async function openEditorWithImage(page: Page) {
-  await gotoHydrated(page, "/edit");
-  const png = await makePng(page);
-  await page
-    .getByTestId("file-input")
-    .setInputFiles({ name: "scene.png", mimeType: "image/png", buffer: png });
-  await expect(page.getByRole("button", { name: "端末に保存" })).toBeEnabled();
-}
 
 test("the top page leads to the editor", async ({ page }) => {
   await gotoHydrated(page, "/");

@@ -42,6 +42,7 @@ scripts/        dev-certs.sh (開発と E2E の TLS)
 
 - 開発とテストの置き場所は手元のファイル (`.data/storage`)、アプリ自身が `/_storage` で受け取って配る (`server/storage-config.ts`、`plugins/dev-storage.ts`)。E2E はメモリ
 - 開発と E2E はジョブをアプリの中で走らせる (`JOBS_INLINE`、既定で有効)。本番は `pnpm --filter @lumorphia-scenote/app worker`
+- 現像の「Scenoteへ投稿」は、書き出した画像とレシピを IndexedDB (`scenote-editor` の `pending-post`) に置いて `/post/new` に進む。ログインに出ても残る (`web/features/post-form/`)。投稿のあとは `/posts/:id` (自分の投稿) で仕上がりを待つ
 - テストの画像はテストの中で sharp で作る。EXIF や拡張チャンクが落ちることは `packages/core/src/jobs/image-process.db.test.ts` で確かめる
 
 ## 依存の方向 (ESLint が強制する)

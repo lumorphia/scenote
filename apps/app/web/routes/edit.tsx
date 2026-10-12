@@ -1,6 +1,6 @@
 import type { Route } from "./+types/edit";
 import { useMemo } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { Editor } from "@lumorphia/editor-react";
 import { scenoteEditorHost } from "../features/editor-host/scenote-host.ts";
 
@@ -20,6 +20,7 @@ export function HydrateFallback() {
 
 export default function Edit() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const initialDraftId = searchParams.get("draft");
   const host = useMemo(
     () =>
@@ -35,15 +36,16 @@ export default function Edit() {
             },
             { replace: true },
           ),
+        goToPostForm: () => navigate("/post/new"),
       }),
-    [initialDraftId, setSearchParams],
+    [initialDraftId, setSearchParams, navigate],
   );
   return (
     <main className="mx-auto max-w-7xl space-y-3 p-4">
       <div className="space-y-1">
         <h1 className="text-xl font-semibold">写真を現像する</h1>
         <p className="text-sm text-ink-muted">
-          画像はこの端末の中だけで現像します。現像した写真は「端末に保存」から保存できます。
+          画像はこの端末の中だけで現像します。仕上がったら「Scenoteへ投稿」から投稿するか、「端末に保存」で保存できます。
         </p>
       </div>
       <Editor host={host} />
