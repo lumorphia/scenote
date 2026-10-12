@@ -9,5 +9,6 @@
 | [0005](0005-login-with-lumorphia-account.md)  | ログインは Lumorphia アカウントで行う             | Accepted |
 | [0006](0006-shared-platform-packages.md)      | 領域に属さない基盤は、先に共通パッケージにする    | Accepted |
 | [0007](0007-public-repository-agpl.md)        | リポジトリは public (AGPL-3.0) にする             | Accepted |
+| [0008](0008-skeleton-and-https-dev.md)        | 骨組みは accounts から写し、開発と E2E は https   | Accepted |
 
 本文中の「prismtone ADR-NNNN」は lumorphia/prismtone の ADR を指す。
