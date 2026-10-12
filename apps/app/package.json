@@ -7,6 +7,7 @@
     "dev": "pnpm models && react-router dev",
     "build": "pnpm models && react-router build",
     "start": "NODE_ENV=production node --env-file-if-exists=../../.env --import ./server/sentry.ts ./server/index.ts",
+    "worker": "node --env-file-if-exists=../../.env --import ./server/sentry.ts ./server/worker.ts",
     "typecheck": "react-router typegen && tsc -p tsconfig.json",
     "test": "vitest run",
     "models": "editor-models fetch --out models"
@@ -24,6 +25,7 @@
     "@lumorphia/editor-react": "1.0.0",
     "@lumorphia/editor-recipe": "1.0.0",
     "@lumorphia/ops": "1.0.0",
+    "@lumorphia/storage": "1.0.0",
     "@mcansh/react-router-fastify": "^5.0.0",
     "@mediapipe/tasks-vision": "^1.1.0",
     "@react-router/node": "^8.4.0",
@@ -46,6 +48,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
     "vite": "^8.3.2",
     "vitest": "^5.0.3"

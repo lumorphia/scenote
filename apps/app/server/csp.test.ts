@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { buildCspDirectives, serializeCsp } from "./csp.ts";
 
-const base = { nonce: "n0nce", imageBaseUrl: "https://img.lumorphia.test", sentryDsn: null };
+const base = {
+  nonce: "n0nce",
+  imageBaseUrl: "https://img.lumorphia.test",
+  uploadOrigin: null,
+  sentryDsn: null,
+};
 
 describe("buildCspDirectives", () => {
   it("allows scripts only from itself, the request nonce and WebAssembly", () => {
@@ -58,5 +63,21 @@ describe("serializeCsp", () => {
     expect(serializeCsp({ "default-src": ["'self'"], "img-src": ["'self'", "data:"] })).toBe(
       "default-src 'self'; img-src 'self' data:",
     );
+  });
+});
+
+describe("buildCspDirectives for uploads", () => {
+  it("lets the browser put images into the storage", () => {
+    expect(
+      buildCspDirectives({ ...base, uploadOrigin: "https://acct.r2.cloudflarestorage.com/bucket" })[
+        "connect-src"
+      ],
+    ).toContain("https://acct.r2.cloudflarestorage.com");
+  });
+
+  it("needs nothing extra when the app itself takes the images", () => {
+    expect(buildCspDirectives({ ...base, uploadOrigin: "/_storage" })["connect-src"]).toEqual([
+      "'self'",
+    ]);
   });
 });

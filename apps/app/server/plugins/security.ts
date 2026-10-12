@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import fp from "fastify-plugin";
+import { uploadOrigin } from "../storage-config.ts";
 import helmet from "@fastify/helmet";
 import { LUMORPHIA_ACCOUNT_EVENTS_PATH, LUMORPHIA_BACKCHANNEL_PATH } from "../lumorphia-paths.ts";
 import { buildCspDirectives, CSP_NONCE_HEADER, CSP_REPORT_PATH, serializeCsp } from "../csp.ts";
@@ -30,6 +31,7 @@ export const securityPlugin = fp(
 
     const cspEnabled = app.env.NODE_ENV !== "development";
     const reportOnly = app.env.CSP_REPORT_ONLY;
+    const upload = uploadOrigin();
 
     app.addHook("onRequest", async (req, reply) => {
       reply.header("permissions-policy", "camera=(), microphone=(), geolocation=()");
@@ -50,6 +52,7 @@ export const securityPlugin = fp(
         buildCspDirectives({
           nonce,
           imageBaseUrl: app.env.PUBLIC_IMAGE_BASE_URL,
+          uploadOrigin: upload,
           sentryDsn: app.env.SENTRY_DSN ?? null,
         }),
       );
