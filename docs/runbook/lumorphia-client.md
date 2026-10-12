@@ -30,7 +30,7 @@ Scenote は Lumorphia アカウントの OIDC の利用側 (ADR-0005、ADR-0009)
 }
 ```
 
-退会の知らせ (`lifecycleUri`) の受け口は S4c で作る。それまでは accounts が送り直し続けるので、開発では accounts の `FEATURE_ACCOUNT_LIFECYCLE=0` のままにする。
+退会の知らせ (`lifecycleUri`) は ADR-0010 で受ける。accounts の `FEATURE_ACCOUNT_LIFECYCLE=1` のときに送られる。
 
 ## 手元で accounts とつなぐ
 
