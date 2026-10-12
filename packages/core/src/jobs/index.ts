@@ -6,6 +6,7 @@ import type { JobDefinition } from "./context.ts";
 export * from "./queue.ts";
 export * from "./context.ts";
 export * from "./pg-boss.ts";
+export { InlineJobQueue } from "./inline.ts";
 export {
   createImageProcessJob,
   PUBLIC_IMAGE_CACHE_CONTROL,
