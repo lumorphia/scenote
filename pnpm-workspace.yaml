@@ -9,7 +9,18 @@ packages:
 minimumReleaseAgeExclude:
   - "@lumorphia/*"
 
+# 依存の版の固定。脆弱性やバンドルの都合で、間接依存の版を上書きする (lumorphia/prismtone・editor と同じ)
+overrides:
+  "@huggingface/transformers>sharp": ^0.35.5
+
 # 依存のビルドスクリプト (install / postinstall) を走らせるかを 1 つずつ決める。載っていないものは install が失敗する
 allowBuilds:
   # ネイティブのバイナリを置く。vite / react-router のビルドで使う
   esbuild: true
+  # 以下は transformers.js (現像の切り抜き) の Node 向けの依存。現像はブラウザで動くので使わない (lumorphia/editor と同じ)
+  # CUDA のバイナリ (330 MB) を取りに行くだけ。CPU 用はパッケージに入っているので要らない
+  onnxruntime-node: false
+  # 同梱の CLI の版を確かめるだけ
+  protobufjs: false
+  # 画像のネイティブのバイナリ
+  sharp: false

@@ -10,3 +10,5 @@ packages/db/drizzle
 build/
 .react-router/
 spikes/*/node_modules/
+# ブラウザ内の認識のモデルと WASM (`pnpm models` が置く)
+apps/app/models

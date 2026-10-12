@@ -11,3 +11,5 @@ test-results/
 playwright-report/
 .react-router/
 .data/
+# 現像の認識のモデルと WASM (pnpm --filter @lumorphia-scenote/app models が揃える)
+apps/app/models/
