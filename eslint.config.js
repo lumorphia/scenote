@@ -67,6 +67,8 @@ export default tseslint.config(
       "**/coverage/**",
       "**/.react-router/**",
       "**/drizzle/**",
+      // ブラウザ内の認識のモデルと WASM (`pnpm models` が置く。git には入らない)
+      "apps/app/models/**",
       // 確かめるための使い捨て。本体の決まりの外
       "spikes/**",
     ],
