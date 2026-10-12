@@ -173,8 +173,8 @@ importers:
         specifier: workspace:*
         version: link:packages/db
       '@lumorphia/e2e':
-        specifier: file:../platform/.worktrees/e2e/packages/e2e
-        version: file:../platform/.worktrees/e2e/packages/e2e(@playwright/test@1.64.0)
+        specifier: 1.0.0
+        version: 1.0.0(@playwright/test@1.64.0)
       '@playwright/test':
         specifier: ^1.63.0
         version: 1.64.0
@@ -1261,14 +1261,11 @@ packages:
     peerDependencies:
       better-auth: 1.7.7
 
-  '@lumorphia/e2e@file:../platform/.worktrees/e2e/packages/e2e':
-    resolution: {directory: ../platform/.worktrees/e2e/packages/e2e, type: directory}
+  '@lumorphia/e2e@1.0.0':
+    resolution: {integrity: sha512-GFVE1D7okJh7CPjRGAra1Gib0+k9aD9sPFyaAGkNWRIfSc6pcU0Hte6E5g331x60fydR3uAmLiRGpsdwMtUQ9A==, tarball: https://npm.pkg.github.com/download/@lumorphia/e2e/1.0.0/4cd3bde7e98ed139f5894eee2ae058adcbb0f3c0}
     hasBin: true
     peerDependencies:
       '@playwright/test': ^1.63.0
-    peerDependenciesMeta:
-      '@playwright/test':
-        optional: true
 
   '@lumorphia/editor-engine@1.0.0':
     resolution: {integrity: sha512-ARWooe75fN6PXlbkGxie4ccM0cWY6dYGTrVNA6t9amYl+GX5WrTKt1nU8LOG5o/rFvweakgiTUFbLrVmtfd8tg==, tarball: https://npm.pkg.github.com/download/@lumorphia/editor-engine/1.0.0/c682de6d606183ee4caab1b20afea00f600810b7}
@@ -3972,11 +3969,10 @@ snapshots:
       better-auth: 1.7.7(@opentelemetry/api@1.9.1)(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.29.6)(pg@8.23.1))(pg@8.23.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vitest@5.0.3)
       jose: 6.2.12
 
-  '@lumorphia/e2e@file:../platform/.worktrees/e2e/packages/e2e(@playwright/test@1.64.0)':
+  '@lumorphia/e2e@1.0.0(@playwright/test@1.64.0)':
     dependencies:
-      jose: 6.2.12
-    optionalDependencies:
       '@playwright/test': 1.64.0
+      jose: 6.2.12
 
   '@lumorphia/editor-engine@1.0.0(@types/node@24.19.2)':
     dependencies:
