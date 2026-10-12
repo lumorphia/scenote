@@ -99,6 +99,7 @@ Lumorphia アカウントのクライアントは https かつループバック
 docker compose up -d                        # 開発の Postgres (5435) と Caddy (8445)
 pnpm --filter @lumorphia-scenote/app dev    # 開発サーバー (Caddy の後ろ、https://scenote.lumorphia.test:8445)
 pnpm --filter @lumorphia-scenote/app worker # ジョブの worker (開発は JOBS_INLINE=0 のときだけ要る)
+pnpm --filter @lumorphia-scenote/app places:sync # 撮影場所の候補を XIVAPI から入れる (開発の最初と本番の最初。ADR-0013)
 pnpm db:generate && pnpm db:migrate         # スキーマ変更後
 pnpm test                                   # 単体・DB テスト
 pnpm e2e                                    # Playwright (https)
