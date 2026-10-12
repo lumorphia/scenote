@@ -8,6 +8,7 @@
     "build": "pnpm models && react-router build",
     "start": "NODE_ENV=production node --env-file-if-exists=../../.env --import ./server/sentry.ts ./server/index.ts",
     "worker": "node --env-file-if-exists=../../.env --import ./server/sentry.ts ./server/worker.ts",
+    "places:sync": "node --env-file-if-exists=../../.env ./server/sync-places.ts",
     "typecheck": "react-router typegen && tsc -p tsconfig.json",
     "test": "vitest run",
     "models": "editor-models fetch --out models"

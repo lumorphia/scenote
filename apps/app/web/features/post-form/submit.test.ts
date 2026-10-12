@@ -46,6 +46,8 @@ const fields = {
   recipe: { version: 4 },
   visibility: "unlisted" as const,
   tags: ["夕焼け"],
+  placeId: null,
+  placeText: " テスト_ゴールドソーサー ",
 };
 
 describe("submitPost", () => {
@@ -83,6 +85,8 @@ describe("submitPost", () => {
       recipe: { version: 4 },
       visibility: "unlisted",
       tags: ["夕焼け"],
+      placeId: null,
+      placeText: "テスト_ゴールドソーサー",
     });
   });
 

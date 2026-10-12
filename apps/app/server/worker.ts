@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createStorage } from "@lumorphia/storage";
 import { createDatabase } from "@lumorphia-scenote/db";
 import { defaultJobs, startWorker } from "@lumorphia-scenote/core/jobs";
+import { HttpPlaceSource } from "@lumorphia-scenote/core/adapters/xivapi-places";
 import { createLogger } from "@lumorphia/ops/logger";
 import { handleShutdownSignals } from "./graceful-shutdown.ts";
 import { storageConfig } from "./storage-config.ts";
@@ -10,10 +11,15 @@ import { storageConfig } from "./storage-config.ts";
 const workerEnv = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   LOG_LEVEL: z.string().default("info"),
+  /** 撮影場所の候補の元 (lumorphia/prismtone と同じ XIVAPI v2) */
+  XIVAPI_BASE_URL: z.string().url().default("https://v2.xivapi.com/api"),
 });
 
+/** XIVAPI に名乗る User-Agent */
+export const XIVAPI_USER_AGENT = "lumorphia-scenote (+https://scenote.lumorphia.com)";
+
 /**
- * ジョブを走らせる worker (派生画像、画像の削除、受け取りの掃除)。アプリは投入だけ (lumorphia/accounts と同じ)。
+ * ジョブを走らせる worker (派生画像、画像の移動と削除、受け取りの掃除、撮影場所の候補の同期)。アプリは投入だけ (lumorphia/accounts と同じ)。
  * 画像の置き場所はアプリと同じ設定を読む (storage-config.ts)
  */
 export async function createWorker(source: NodeJS.ProcessEnv = process.env) {
@@ -33,7 +39,12 @@ export async function createWorker(source: NodeJS.ProcessEnv = process.env) {
       db,
       storage: createStorage(storageConfig(source)),
       log,
-      jobs: defaultJobs(),
+      jobs: defaultJobs({
+        placeSource: new HttpPlaceSource({
+          baseUrl: env.XIVAPI_BASE_URL,
+          userAgent: XIVAPI_USER_AGENT,
+        }),
+      }),
     });
     log.info({}, "worker started");
     return {

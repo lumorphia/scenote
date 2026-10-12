@@ -11,6 +11,11 @@ import { takenOnFrom } from "../features/post-form/taken-on.ts";
 import type { Visibility } from "../features/post-form/visibility.ts";
 import { VisibilityField } from "../features/post-form/VisibilityField.tsx";
 import { TagsField } from "../features/post-form/TagsField.tsx";
+import {
+  PlaceField,
+  type PlaceRegion,
+  type PlaceValue,
+} from "../features/post-form/PlaceField.tsx";
 import { loginHref } from "../lib/login.ts";
 
 export function meta(_: Route.MetaArgs) {
@@ -19,13 +24,20 @@ export function meta(_: Route.MetaArgs) {
 
 // 書き出した画像は端末の IndexedDB にあるので、ブラウザでだけ組み立てる
 export async function clientLoader() {
-  const [pending, me] = await Promise.all([
+  const [pending, me, regions] = await Promise.all([
     loadPendingPost(),
     fetch("/api/me", { credentials: "same-origin" })
       .then((res) => (res.ok ? (res.json() as Promise<{ user: unknown }>) : { user: null }))
       .catch(() => ({ user: null })),
+    // 候補が読めなくても、自由入力で書ける
+    fetch("/api/places")
+      .then((res) =>
+        res.ok ? (res.json() as Promise<{ regions: PlaceRegion[] }>) : { regions: [] },
+      )
+      .then((data) => data.regions)
+      .catch((): PlaceRegion[] => []),
   ]);
-  return { pending, signedIn: me.user !== null };
+  return { pending, signedIn: me.user !== null, regions };
 }
 clientLoader.hydrate = true as const;
 
@@ -37,7 +49,7 @@ const MAX_TITLE = 100;
 const MAX_BODY = 2000;
 
 export default function PostNew({ loaderData }: Route.ComponentProps) {
-  const { pending, signedIn } = loaderData;
+  const { pending, signedIn, regions } = loaderData;
   if (!pending) {
     return (
       <main className="mx-auto max-w-2xl space-y-4 p-8">
@@ -54,10 +66,18 @@ export default function PostNew({ loaderData }: Route.ComponentProps) {
       </main>
     );
   }
-  return <PostForm pending={pending} signedIn={signedIn} />;
+  return <PostForm pending={pending} signedIn={signedIn} regions={regions} />;
 }
 
-function PostForm({ pending, signedIn }: { pending: PendingPost; signedIn: boolean }) {
+function PostForm({
+  pending,
+  signedIn,
+  regions,
+}: {
+  pending: PendingPost;
+  signedIn: boolean;
+  regions: PlaceRegion[];
+}) {
   const navigate = useNavigate();
   const preview = useMemo(() => URL.createObjectURL(pending.blob), [pending.blob]);
   useEffect(() => () => URL.revokeObjectURL(preview), [preview]);
@@ -66,6 +86,7 @@ function PostForm({ pending, signedIn }: { pending: PendingPost; signedIn: boole
   const [takenOn, setTakenOn] = useState(() => takenOnFrom(pending.lastModified));
   const [visibility, setVisibility] = useState<Visibility>("public");
   const [tags, setTags] = useState<string[]>([]);
+  const [place, setPlace] = useState<PlaceValue>({ placeId: null, placeText: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,6 +103,7 @@ function PostForm({ pending, signedIn }: { pending: PendingPost; signedIn: boole
         recipe: pending.recipe,
         visibility,
         tags,
+        ...place,
       });
       await clearPendingPost();
       navigate(`/posts/${postId}`);
@@ -140,6 +162,7 @@ function PostForm({ pending, signedIn }: { pending: PendingPost; signedIn: boole
             className="rounded-md border border-line bg-surface px-3 py-2"
           />
         </label>
+        <PlaceField regions={regions} value={place} onChange={setPlace} />
         <TagsField value={tags} onChange={setTags} />
         <VisibilityField value={visibility} onChange={setVisibility} />
         <div className="space-y-1 rounded-md border border-line-soft bg-surface-muted p-3 text-sm">
