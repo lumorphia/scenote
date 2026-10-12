@@ -13,5 +13,6 @@
 | [0009](0009-login-acceptance.md)              | Lumorphia でログインした人の受け入れ方とログアウト     | Accepted |
 | [0010](0010-account-lifecycle.md)             | 退会と復旧は accounts で行い、知らせで当てる           | Accepted |
 | [0011](0011-image-pipeline.md)                | 画像は署名付き PUT で受け取り、worker が派生画像を作る | Accepted |
+| [0012](0012-private-images-through-app.md)    | 非公開の投稿の画像は、アプリが本人にだけ返す           | Accepted |
 
 本文中の「prismtone ADR-NNNN」は lumorphia/prismtone の ADR を指す。
