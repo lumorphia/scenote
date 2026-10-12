@@ -14,13 +14,19 @@ if [ ! -f ca.pem ]; then
   echo "created $dir/ca.pem"
 fi
 
+# E2E の Lumorphia の発行元のふり (Node) が 127.0.0.1 でアプリに back-channel logout を送るので、IP も入れる。
+# 前の証明書 (*.lumorphia.test だけ) なら、CA はそのままでサーバーの証明書だけ作り直す
+if [ -f cert.pem ] && ! openssl x509 -in cert.pem -noout -ext subjectAltName 2>/dev/null | grep -q "IP Address:127.0.0.1"; then
+  rm -f cert.pem key.pem
+fi
+
 if [ ! -f cert.pem ]; then
   openssl req -newkey rsa:2048 -nodes -keyout key.pem -out cert.csr -subj "/CN=lumorphia.test" 2>/dev/null
   cat > cert.ext <<'EXT'
 basicConstraints=CA:FALSE
 keyUsage=critical,digitalSignature,keyEncipherment
 extendedKeyUsage=serverAuth
-subjectAltName=DNS:lumorphia.test,DNS:*.lumorphia.test
+subjectAltName=DNS:lumorphia.test,DNS:*.lumorphia.test,IP:127.0.0.1
 EXT
   # ブラウザは 398 日より長いサーバー証明書を拒む
   openssl x509 -req -in cert.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out cert.pem \
