@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { createUpload, UPLOAD_MIMES } from "@lumorphia-scenote/core/domain/uploads";
 import {
+  changeTags,
   changeVisibility,
   createPost,
   getPost,
@@ -20,6 +21,7 @@ const postSchema = z.object({
   title: z.string().nullable(),
   body: z.string().nullable(),
   takenOn: z.string().nullable(),
+  tags: z.array(z.object({ name: z.string(), displayName: z.string() })),
   image: z
     .object({
       display: z.string(),
@@ -80,6 +82,7 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
           /** 現像のレシピ。中身はドメインが @lumorphia/editor-recipe で確かめる */
           recipe: z.unknown().optional(),
           visibility: z.enum(VISIBILITIES).optional(),
+          tags: z.array(z.string().max(200)).max(50).optional(),
         }),
         response: withErrors({ 201: z.object({ postId: z.string() }) }),
       },
@@ -128,21 +131,27 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
     {
       schema: {
         tags: ["posts"],
-        summary: "公開範囲を変える。画像は新しい URL に移る",
+        summary: "公開範囲やタグを変える。公開範囲を変えると画像は新しい URL に移る",
         params: z.object({ id: z.string() }),
-        body: z.object({ visibility: z.enum(VISIBILITIES) }),
+        body: z.object({
+          visibility: z.enum(VISIBILITIES).optional(),
+          tags: z.array(z.string().max(200)).max(50).optional(),
+        }),
         response: withErrors({ 204: z.null() }),
       },
       config: { rateLimit: { max: 30, timeWindow: "1 minute" } },
       preValidation: [app.requireAuth],
     },
     async (req, reply) => {
-      await changeVisibility(
-        { db: app.db, jobs: app.jobs },
-        req.user!.id,
-        postId(req.params.id),
-        req.body.visibility,
-      );
+      const id = postId(req.params.id);
+      if (req.body.tags) await changeTags({ db: app.db }, req.user!.id, id, req.body.tags);
+      if (req.body.visibility)
+        await changeVisibility(
+          { db: app.db, jobs: app.jobs },
+          req.user!.id,
+          id,
+          req.body.visibility,
+        );
       return reply.code(204).send(null);
     },
   );

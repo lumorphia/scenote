@@ -219,6 +219,25 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
     expect((await readPost("", postId)).statusCode).toBe(404);
   });
 
+  it("keeps the tags and lets the owner change them", async () => {
+    const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+    const { postId } = await post(cookie, { tags: ["#夕焼け", "旅"] });
+    expect((await readPost(cookie, postId)).json().tags).toEqual([
+      { name: "夕焼け", displayName: "夕焼け" },
+      { name: "旅", displayName: "旅" },
+    ]);
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/posts/${postId}`,
+      headers: mutating(cookie),
+      payload: { tags: ["夜景"] },
+    });
+    expect(res.statusCode).toBe(204);
+    expect((await readPost(cookie, postId)).json().tags).toEqual([
+      { name: "夜景", displayName: "夜景" },
+    ]);
+  });
+
   it("does not let someone else change the visibility", async () => {
     const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
     const { cookie: other } = await loginWithLumorphia(app, mock, lumorphiaUser());

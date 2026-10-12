@@ -45,6 +45,7 @@ const fields = {
   takenOn: "2026-09-30",
   recipe: { version: 4 },
   visibility: "unlisted" as const,
+  tags: ["夕焼け"],
 };
 
 describe("submitPost", () => {
@@ -81,6 +82,7 @@ describe("submitPost", () => {
       takenOn: "2026-09-30",
       recipe: { version: 4 },
       visibility: "unlisted",
+      tags: ["夕焼け"],
     });
   });
 
