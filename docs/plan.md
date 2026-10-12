@@ -13,8 +13,8 @@
 | 段階 | 内容                                                                                                                                                                                      | 状態   |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
 | S1   | `@lumorphia/media` の切り出し (platform)                                                                                                                                                  | 済み   |
-| S2   | 骨組み。React Router (SSR) + Fastify + Drizzle + PostgreSQL、https の開発と E2E、CI、gitleaks、release-please (ADR-0008)                                                                  | 作業中 |
-| S3   | 現像の画面。`<Editor>` を置き、editor ADR-0009 のホストの要件 (オリジンの分離、CSP、モデルの配信、Tailwind の `@source`、Vite) を満たす。「Scenoteへ投稿」の行き先は S5 でつなぐ          |        |
+| S2   | 骨組み。React Router (SSR) + Fastify + Drizzle + PostgreSQL、https の開発と E2E、CI、gitleaks、release-please (ADR-0008)                                                                  | 済み   |
+| S3   | 現像の画面。`<Editor>` を置き、editor ADR-0009 のホストの要件 (オリジンの分離、CSP、モデルの配信、Tailwind の `@source`、Vite) を満たす。「Scenoteへ投稿」の行き先は S5 でつなぐ          | 作業中 |
 | S4   | ログイン (accounts の A3)。`@lumorphia/auth-client`、規約の同意、退会の知らせの受け口。E2E の土台 (偽の発行元、E2E 専用の CA) を platform に切り出す (ADR-0008)                           |        |
 | S5   | 投稿。`@lumorphia/storage` の署名付き URL、`@lumorphia/media` の派生画像のジョブ (pg-boss)、モデレーション、公開範囲 (ADR-0004)、撮影場所、タグ、撮影日、レシピの保存。Prismtone から写す |        |
 | S6   | 閲覧。一覧、詳細、タグ検索、マイページと削除、OGP                                                                                                                                         |        |
