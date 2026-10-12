@@ -3,10 +3,18 @@ import type { ObjectStorage } from "@lumorphia/storage";
 import { editRecipeInputSchema } from "@lumorphia/editor-recipe";
 import { schema, type Database } from "@lumorphia-scenote/db";
 import type { JobQueue } from "../jobs/queue.ts";
-import { newImageKeyBase, tmpKey, variantKey } from "../storage-keys.ts";
+import {
+  isPrivateKey,
+  newImageKeyBase,
+  tmpKey,
+  variantKey,
+  type Variant,
+} from "../storage-keys.ts";
 import { DomainError } from "./errors.ts";
 
 export type PostStatus = "processing" | "published" | "failed";
+export const VISIBILITIES = ["public", "unlisted", "private"] as const;
+export type Visibility = (typeof VISIBILITIES)[number];
 
 /** タイトルと本文の長さの上限 (タイトルは lumorphia/prismtone と同じ) */
 export const MAX_TITLE_LENGTH = 100;
@@ -20,7 +28,15 @@ export type CreatePostInput = {
   takenOn?: string | null | undefined;
   /** 現像のレシピ。読めないものは断る */
   recipe?: unknown;
+  /** 既定は公開 (ADR-0004) */
+  visibility?: Visibility | undefined;
 };
+
+function visibility(value: Visibility | undefined): Visibility {
+  if (value === undefined) return "public";
+  if (!VISIBILITIES.includes(value)) throw new DomainError("validation", "unknown visibility");
+  return value;
+}
 
 /** 前後の空白を落とし、空なら無いことにする */
 function text(value: string | null | undefined, max: number, name: string): string | null {
@@ -64,6 +80,7 @@ export async function createPost(
     body: text(input.body, MAX_BODY_LENGTH, "body"),
     takenOn: takenOn(input.takenOn, now),
     recipe: recipe(input.recipe),
+    visibility: visibility(input.visibility),
   };
   return db.transaction(async (tx) => {
     const [upload] = await tx
@@ -85,7 +102,7 @@ export async function createPost(
     await tx.insert(schema.posts).values({
       id: postId,
       userId,
-      imageKeyBase: newImageKeyBase(postId),
+      imageKeyBase: newImageKeyBase(postId, fields.visibility),
       uploadId: upload.id,
       ...fields,
     });
@@ -94,9 +111,38 @@ export async function createPost(
   });
 }
 
-export type OwnPostView = {
+type PostRow = typeof schema.posts.$inferSelect;
+
+/**
+ * 見られるかの判定。投稿の API、画像の中継、これからの一覧と OGP が、すべてここを通す (ADR-0004)。
+ * 本人はいつでも見られる。ほかの人は、画像ができていて、投稿者が退会中でなく、非公開でないときだけ
+ */
+export function canView(
+  post: Pick<PostRow, "userId" | "status" | "visibility">,
+  authorStatus: "active" | "deleted",
+  viewerId: string | null,
+): boolean {
+  if (viewerId !== null && viewerId === post.userId) return true;
+  return post.status === "published" && authorStatus === "active" && post.visibility !== "private";
+}
+
+async function loadViewable(db: Database, viewerId: string | null, postId: string) {
+  const [row] = await db
+    .select({ post: schema.posts, authorStatus: schema.users.status })
+    .from(schema.posts)
+    .innerJoin(schema.users, eq(schema.users.id, schema.posts.userId))
+    .where(eq(schema.posts.id, postId));
+  if (!row || !canView(row.post, row.authorStatus, viewerId))
+    throw new DomainError("not_found", "post not found");
+  return row.post;
+}
+
+export type PostView = {
   id: string;
   status: PostStatus;
+  visibility: Visibility;
+  isOwner: boolean;
+  /** 本人にだけ見せる */
   failureReason: string | null;
   title: string | null;
   body: string | null;
@@ -111,28 +157,35 @@ export type OwnPostView = {
   createdAt: Date;
 };
 
-/** 自分の投稿を読む。ほかの人のものは無いことにする (公開範囲の認可は S5c で 1 か所にまとめる) */
-export async function getOwnPost(
+/** 画像の URL。非公開の置き場所 (移している途中も含む) にあれば、アプリの中継を指す (ADR-0012) */
+function imageUrl(post: PostRow, imageBaseUrl: string, variant: Variant): string {
+  return isPrivateKey(post.imageKeyBase)
+    ? `/api/posts/${post.id}/image/${variant}`
+    : `${imageBaseUrl}/${variantKey(post.imageKeyBase, variant)}`;
+}
+
+/** 投稿を読む。見られない投稿は無いことにする (canView) */
+export async function getPost(
   { db, imageBaseUrl }: { db: Database; imageBaseUrl: string },
-  userId: string,
+  viewerId: string | null,
   postId: string,
-): Promise<OwnPostView> {
-  const post = await db.query.posts.findFirst({
-    where: and(eq(schema.posts.id, postId), eq(schema.posts.userId, userId)),
-  });
-  if (!post) throw new DomainError("not_found", "post not found");
+): Promise<PostView> {
+  const post = await loadViewable(db, viewerId, postId);
+  const isOwner = viewerId === post.userId;
   const ready = post.status === "published" && post.width != null && post.height != null;
   return {
     id: post.id,
     status: post.status,
-    failureReason: post.failureReason,
+    visibility: post.visibility,
+    isOwner,
+    failureReason: isOwner ? post.failureReason : null,
     title: post.title,
     body: post.body,
     takenOn: post.takenOn,
     image: ready
       ? {
-          display: `${imageBaseUrl}/${variantKey(post.imageKeyBase, "display")}`,
-          thumb: `${imageBaseUrl}/${variantKey(post.imageKeyBase, "thumb")}`,
+          display: imageUrl(post, imageBaseUrl, "display"),
+          thumb: imageUrl(post, imageBaseUrl, "thumb"),
           width: post.width!,
           height: post.height!,
           blurhash: post.blurhash,
@@ -140,4 +193,45 @@ export async function getOwnPost(
       : null,
     createdAt: post.createdAt,
   };
+}
+
+/**
+ * 公開範囲を変える。見られるかは新しい範囲ですぐに決まり、画像は新しい推測できないキーへ image-move が移す。
+ * 古い画像の URL はそこで使えなくなる (ADR-0004)
+ */
+export async function changeVisibility(
+  { db, jobs }: { db: Database; jobs: JobQueue },
+  userId: string,
+  postId: string,
+  next: Visibility,
+): Promise<void> {
+  const to = visibility(next);
+  await db.transaction(async (tx) => {
+    const [post] = await tx
+      .select()
+      .from(schema.posts)
+      .where(and(eq(schema.posts.id, postId), eq(schema.posts.userId, userId)))
+      .for("update");
+    if (!post) throw new DomainError("not_found", "post not found");
+    if (post.visibility === to) return;
+    await tx
+      .update(schema.posts)
+      .set({ visibility: to, pendingImageKeyBase: newImageKeyBase(postId, to) })
+      .where(eq(schema.posts.id, postId));
+    await jobs.enqueue("image-move", { postId }, { transaction: tx, singletonKey: postId });
+  });
+}
+
+/** アプリが中継する画像 (非公開の投稿)。判定は canView。今ある置き場所から読む */
+export async function readPostImage(
+  { db, storage }: { db: Database; storage: ObjectStorage },
+  viewerId: string | null,
+  postId: string,
+  variant: Variant,
+): Promise<{ body: Uint8Array; contentType: string }> {
+  const post = await loadViewable(db, viewerId, postId);
+  const body =
+    post.status === "published" ? await storage.get(variantKey(post.imageKeyBase, variant)) : null;
+  if (!body) throw new DomainError("not_found", "image not found");
+  return { body, contentType: "image/webp" };
 }

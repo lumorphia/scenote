@@ -1,13 +1,12 @@
 import { eq } from "drizzle-orm";
 import { ImageRejectedError, type ImageProcessor } from "@lumorphia/media";
 import { schema } from "@lumorphia-scenote/db";
-import { tmpKey, variantKey } from "../storage-keys.ts";
+import { imageCacheControl, tmpKey, variantKey } from "../storage-keys.ts";
 import type { JobContext, JobDefinition } from "./context.ts";
 
 export type ImageProcessData = { postId: string };
 
-/** 削除後に CDN やブラウザに長く残らないよう短めにする (lumorphia/prismtone と同じ) */
-export const PUBLIC_IMAGE_CACHE_CONTROL = "public, max-age=3600, must-revalidate";
+export { PUBLIC_IMAGE_CACHE_CONTROL } from "../storage-keys.ts";
 
 /**
  * 受け取った画像 (tmp/{uploadId}) を検証・再エンコードし、display と thumb を置いて投稿を公開する。
@@ -42,7 +41,7 @@ export function createImageProcessJob(processor: ImageProcessor): JobDefinition<
           key: variantKey(post.imageKeyBase, variant),
           body: variants[variant],
           contentType: "image/webp",
-          cacheControl: PUBLIC_IMAGE_CACHE_CONTROL,
+          cacheControl: imageCacheControl(post.imageKeyBase),
         });
       await db
         .update(schema.posts)

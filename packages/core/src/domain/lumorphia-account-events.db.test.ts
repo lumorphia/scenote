@@ -133,6 +133,19 @@ describe.skipIf(!databaseUrl)("lumorphia account events (PostgreSQL)", () => {
       ]);
     });
 
+    it("also removes images that were being moved to a new place", async () => {
+      const me = await user();
+      const mine = await post(me.id);
+      await db
+        .update(schema.posts)
+        .set({ pendingImageKeyBase: "private/test-moving" })
+        .where(eq(schema.posts.id, mine.id));
+      await applyLumorphiaAccountEvent({ db, jobs }, event(me.lumorphiaSub, "purged", 2));
+      expect(jobs.ofType("image-delete").map((j) => j.data)).toEqual([
+        { keyBases: [mine.imageKeyBase, "private/test-moving"] },
+      ]);
+    });
+
     it("keeps the images of a user who is only deleted", async () => {
       const me = await user();
       await post(me.id);
