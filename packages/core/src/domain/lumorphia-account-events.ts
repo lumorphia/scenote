@@ -1,6 +1,20 @@
 import { and, eq, lt, max, ne } from "drizzle-orm";
 import type { Database } from "@lumorphia-scenote/db";
 import { schema } from "@lumorphia-scenote/db";
+import type { JobQueue } from "../jobs/queue.ts";
+
+export type AccountEventDeps = { db: Database; jobs: JobQueue };
+
+/** 消す人の投稿の画像を、行と同じトランザクションで消すジョブに渡す (ストレージに残さない) */
+async function removeUser(tx: Database, jobs: JobQueue, userId: string): Promise<void> {
+  const owned = await tx
+    .select({ base: schema.posts.imageKeyBase })
+    .from(schema.posts)
+    .where(eq(schema.posts.userId, userId));
+  await tx.delete(schema.users).where(eq(schema.users.id, userId));
+  if (owned.length)
+    await jobs.enqueue("image-delete", { keyBases: owned.map((p) => p.base) }, { transaction: tx });
+}
 
 /**
  * Lumorphia の退会・復旧・物理削除の知らせ (ADR-0010。lumorphia/prismtone の ADR-0058 から)。
@@ -24,7 +38,7 @@ export type LumorphiaAccountEvent = {
  * 当てた revision より古いものは当てない。物理削除では、その人の知らせの記録も消す
  */
 export async function applyLumorphiaAccountEvent(
-  db: Database,
+  { db, jobs }: AccountEventDeps,
   event: LumorphiaAccountEvent,
   now: Date = new Date(),
 ): Promise<void> {
@@ -72,7 +86,7 @@ export async function applyLumorphiaAccountEvent(
         .where(eq(schema.users.id, user.id));
       return;
     }
-    await tx.delete(schema.users).where(eq(schema.users.id, user.id));
+    await removeUser(tx, jobs, user.id);
     await tx
       .delete(schema.lumorphiaAccountEvents)
       .where(eq(schema.lumorphiaAccountEvents.sub, event.sub));
@@ -84,20 +98,25 @@ export async function applyLumorphiaAccountEvent(
  * 新しい利用者として始めさせる (auth-client の README)
  */
 export async function prepareLoginAfterDeletion(
-  db: Database,
+  { db, jobs }: AccountEventDeps,
   sub: string,
   now: Date = new Date(),
 ): Promise<void> {
   const expiredBefore = new Date(now.getTime() - ACCOUNT_RECOVERY_DAYS * 86_400_000);
-  await db
-    .delete(schema.users)
-    .where(
-      and(
-        eq(schema.users.lumorphiaSub, sub),
-        eq(schema.users.status, "deleted"),
-        lt(schema.users.deletedAt, expiredBefore),
-      ),
-    );
+  await db.transaction(async (tx) => {
+    const [expired] = await tx
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(
+        and(
+          eq(schema.users.lumorphiaSub, sub),
+          eq(schema.users.status, "deleted"),
+          lt(schema.users.deletedAt, expiredBefore),
+        ),
+      )
+      .for("update");
+    if (expired) await removeUser(tx, jobs, expired.id);
+  });
 }
 
 /**

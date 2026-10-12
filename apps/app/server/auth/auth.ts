@@ -4,6 +4,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { genericOAuth } from "better-auth/plugins/generic-oauth";
 import { createLumorphiaOAuthConfig, type VerifiedLogin } from "@lumorphia/auth-client";
 import { schema, type Database } from "@lumorphia-scenote/db";
+import type { JobQueue } from "@lumorphia-scenote/core/jobs";
 import {
   prepareLoginAfterDeletion,
   restoreOnLogin,
@@ -29,7 +30,7 @@ export function runAuthRequest<T>(handler: () => Promise<T>): Promise<T> {
 }
 
 /** LUMORPHIA_* が揃っていれば「Lumorphia でログイン」の設定を返す (ADR-0009) */
-function lumorphiaProvider(db: Database, env: Env) {
+function lumorphiaProvider(db: Database, env: Env, jobs: JobQueue) {
   const config = lumorphiaConfig(env);
   if (!config) return null;
   const base = createLumorphiaOAuthConfig({
@@ -38,7 +39,7 @@ function lumorphiaProvider(db: Database, env: Env) {
       const store = lumorphiaLogin.getStore();
       if (!store) throw new Error("Missing Lumorphia login context");
       // 退会から 30 日を過ぎた人が残っていれば、先に消して新しく始めさせる (ADR-0010)
-      await prepareLoginAfterDeletion(db, login.claims.sub);
+      await prepareLoginAfterDeletion({ db, jobs }, login.claims.sub);
       store.login = login;
     },
   });
@@ -55,8 +56,8 @@ function lumorphiaProvider(db: Database, env: Env) {
 }
 
 /** Better Auth のインスタンスを作る。ログインは Lumorphia アカウントだけ (ADR-0005、ADR-0009) */
-export function createAuth({ db, env }: { db: Database; env: Env }) {
-  const lumorphia = lumorphiaProvider(db, env);
+export function createAuth({ db, env, jobs }: { db: Database; env: Env; jobs: JobQueue }) {
+  const lumorphia = lumorphiaProvider(db, env, jobs);
   return betterAuth({
     appName: "Scenote",
     baseURL: env.AUTH_BASE_URL,
