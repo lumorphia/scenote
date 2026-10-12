@@ -4,20 +4,31 @@ import { buildCspDirectives, serializeCsp } from "./csp.ts";
 const base = { nonce: "n0nce", imageBaseUrl: "https://img.lumorphia.test", sentryDsn: null };
 
 describe("buildCspDirectives", () => {
-  it("allows scripts only from itself and the request nonce", () => {
-    expect(buildCspDirectives(base)["script-src"]).toEqual(["'self'", "'nonce-n0nce'"]);
+  it("allows scripts only from itself, the request nonce and WebAssembly", () => {
+    expect(buildCspDirectives(base)["script-src"]).toEqual([
+      "'self'",
+      "'nonce-n0nce'",
+      "'wasm-unsafe-eval'",
+    ]);
   });
 
-  it("does not allow eval or WebAssembly", () => {
-    const script = buildCspDirectives(base)["script-src"]!.join(" ");
-    expect(script).not.toMatch(/unsafe-eval|wasm-unsafe-eval|unsafe-inline/);
+  it("allows WebAssembly for the editor but not eval or inline scripts", () => {
+    const script = buildCspDirectives(base)["script-src"]!;
+    expect(script).toContain("'wasm-unsafe-eval'");
+    expect(script).not.toContain("'unsafe-eval'");
+    expect(script).not.toContain("'unsafe-inline'");
   });
 
-  it("allows images only from itself, the image host and data URLs", () => {
+  it("lets the editor start workers from itself and blob URLs", () => {
+    expect(buildCspDirectives(base)["worker-src"]).toEqual(["'self'", "blob:"]);
+  });
+
+  it("allows images only from itself, the image host, data and blob URLs", () => {
     expect(buildCspDirectives(base)["img-src"]).toEqual([
       "'self'",
       "https://img.lumorphia.test",
       "data:",
+      "blob:",
     ]);
   });
 
@@ -37,6 +48,7 @@ describe("buildCspDirectives", () => {
     expect(buildCspDirectives({ ...base, imageBaseUrl: "/img" })["img-src"]).toEqual([
       "'self'",
       "data:",
+      "blob:",
     ]);
   });
 });
