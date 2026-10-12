@@ -26,7 +26,7 @@ declare module "fastify" {
 /** Better Auth を /api/auth/* にマウントし、認証の decorator を出す (lumorphia/prismtone と同じ形) */
 export const authPlugin = fp(
   async (app) => {
-    const auth = createAuth({ db: app.db, env: app.env });
+    const auth = createAuth({ db: app.db, env: app.env, jobs: app.jobs });
     app.decorate("auth", auth);
     app.decorateRequest("user", null);
     app.decorateRequest("session", null);
@@ -83,5 +83,5 @@ export const authPlugin = fp(
       if (!req.user) throw new DomainError("unauthorized", "login required");
     });
   },
-  { name: "auth", dependencies: ["db"] },
+  { name: "auth", dependencies: ["db", "jobs"] },
 );

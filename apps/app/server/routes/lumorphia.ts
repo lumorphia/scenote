@@ -116,13 +116,16 @@ export const lumorphiaRoutes: FastifyPluginAsyncZod = async (app) => {
     adapter: {
       // 退会・復旧・物理削除の知らせを当てる (ADR-0010)。失敗は 500 で、accounts が送り直す
       applyOnce: (event) =>
-        applyLumorphiaAccountEvent(app.db, {
-          eventId: event.eventId,
-          sub: event.sub,
-          revision: event.revision,
-          state: event.state,
-          deletedAt: event.deletedAt ? new Date(event.deletedAt) : null,
-        }),
+        applyLumorphiaAccountEvent(
+          { db: app.db, jobs: app.jobs },
+          {
+            eventId: event.eventId,
+            sub: event.sub,
+            revision: event.revision,
+            state: event.state,
+            deletedAt: event.deletedAt ? new Date(event.deletedAt) : null,
+          },
+        ),
     },
   });
   /** auth-client の受け口に Request を渡し、Response をそのまま返す */
