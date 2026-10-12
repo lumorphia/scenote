@@ -8,12 +8,13 @@ export type AccountEventDeps = { db: Database; jobs: JobQueue };
 /** 消す人の投稿の画像を、行と同じトランザクションで消すジョブに渡す (ストレージに残さない) */
 async function removeUser(tx: Database, jobs: JobQueue, userId: string): Promise<void> {
   const owned = await tx
-    .select({ base: schema.posts.imageKeyBase })
+    .select({ base: schema.posts.imageKeyBase, pending: schema.posts.pendingImageKeyBase })
     .from(schema.posts)
     .where(eq(schema.posts.userId, userId));
+  // 公開範囲を変えて画像を移している途中なら、行き先も消す
+  const keyBases = owned.flatMap((p) => (p.pending ? [p.base, p.pending] : [p.base]));
   await tx.delete(schema.users).where(eq(schema.users.id, userId));
-  if (owned.length)
-    await jobs.enqueue("image-delete", { keyBases: owned.map((p) => p.base) }, { transaction: tx });
+  if (owned.length) await jobs.enqueue("image-delete", { keyBases }, { transaction: tx });
 }
 
 /**

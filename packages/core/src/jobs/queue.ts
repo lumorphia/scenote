@@ -1,7 +1,7 @@
 import type { Database } from "@lumorphia-scenote/db";
 
 /** ジョブの名前。投入は API、実行は worker (lumorphia/accounts と同じ形) */
-export const JOB_NAMES = ["image-process", "image-delete", "upload-cleanup"] as const;
+export const JOB_NAMES = ["image-process", "image-move", "image-delete", "upload-cleanup"] as const;
 export type JobName = (typeof JOB_NAMES)[number];
 
 export type EnqueueOptions = {

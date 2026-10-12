@@ -41,8 +41,17 @@ export const posts = pgTable(
     status: text("status", { enum: ["processing", "published", "failed"] })
       .notNull()
       .default("processing"),
-    /** 派生画像のキーの頭。推測できない値を含む (限定公開の画像 URL のため。ADR-0004) */
+    /** 公開範囲 (ADR-0004)。既定は公開 */
+    visibility: text("visibility", { enum: ["public", "unlisted", "private"] })
+      .notNull()
+      .default("public"),
+    /**
+     * 派生画像が今あるキーの頭。推測できない値を含む (限定公開の画像 URL のため。ADR-0004)。
+     * 公開・限定公開は posts/、非公開は private/ (ADR-0012)
+     */
     imageKeyBase: text("image_key_base").notNull(),
+    /** 公開範囲を変えて、画像を移している先。移し終えたら null (image-move ジョブ) */
+    pendingImageKeyBase: text("pending_image_key_base"),
     /** 派生画像を作るまでの受け取りの枠。作ったら外す */
     uploadId: uuid("upload_id").references(() => uploads.id, { onDelete: "set null" }),
     width: integer("width"),

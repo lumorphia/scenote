@@ -7,7 +7,7 @@ import { createDatabase, schema, type Database } from "@lumorphia-scenote/db";
 import { MemoryJobQueue } from "../jobs/queue.ts";
 import { tmpKey, variantKey } from "../storage-keys.ts";
 import { createUpload, UPLOAD_TTL_MS } from "./uploads.ts";
-import { createPost, getOwnPost, MAX_BODY_LENGTH, MAX_TITLE_LENGTH } from "./posts.ts";
+import { createPost, getPost, MAX_BODY_LENGTH, MAX_TITLE_LENGTH } from "./posts.ts";
 
 const databaseUrl = process.env.DATABASE_URL;
 const IMAGE_BASE = "https://img.example.invalid";
@@ -190,7 +190,7 @@ describe.skipIf(!databaseUrl)("posts (PostgreSQL)", () => {
     });
   });
 
-  describe("getOwnPost", () => {
+  describe("getPost by the owner", () => {
     it("shows what the user wrote", async () => {
       const me = await user();
       const { postId } = await createPost(deps(), me.id, {
@@ -199,7 +199,7 @@ describe.skipIf(!databaseUrl)("posts (PostgreSQL)", () => {
         body: "テスト_本文",
         takenOn: "2026-09-30",
       });
-      expect(await getOwnPost({ db, imageBaseUrl: IMAGE_BASE }, me.id, postId)).toMatchObject({
+      expect(await getPost({ db, imageBaseUrl: IMAGE_BASE }, me.id, postId)).toMatchObject({
         title: "テスト_題",
         body: "テスト_本文",
         takenOn: "2026-09-30",
@@ -214,7 +214,7 @@ describe.skipIf(!databaseUrl)("posts (PostgreSQL)", () => {
         .update(schema.posts)
         .set({ status: "published", width: 1200, height: 800, blurhash: "test-blurhash" })
         .where(eq(schema.posts.id, postId));
-      expect(await getOwnPost({ db, imageBaseUrl: IMAGE_BASE }, me.id, postId)).toMatchObject({
+      expect(await getPost({ db, imageBaseUrl: IMAGE_BASE }, me.id, postId)).toMatchObject({
         id: postId,
         status: "published",
         image: {
@@ -230,7 +230,7 @@ describe.skipIf(!databaseUrl)("posts (PostgreSQL)", () => {
     it("shows no images while they are being made", async () => {
       const me = await user();
       const { postId } = await createPost(deps(), me.id, { uploadId: await uploaded(me.id) });
-      expect(await getOwnPost({ db, imageBaseUrl: IMAGE_BASE }, me.id, postId)).toMatchObject({
+      expect(await getPost({ db, imageBaseUrl: IMAGE_BASE }, me.id, postId)).toMatchObject({
         status: "processing",
         image: null,
       });
@@ -241,7 +241,7 @@ describe.skipIf(!databaseUrl)("posts (PostgreSQL)", () => {
       const other = await user();
       const { postId } = await createPost(deps(), me.id, { uploadId: await uploaded(me.id) });
       await expect(
-        getOwnPost({ db, imageBaseUrl: IMAGE_BASE }, other.id, postId),
+        getPost({ db, imageBaseUrl: IMAGE_BASE }, other.id, postId),
       ).rejects.toMatchObject({ code: "not_found" });
     });
   });
