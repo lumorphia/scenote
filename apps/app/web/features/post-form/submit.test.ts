@@ -39,7 +39,13 @@ function fakeFetch(answers: Partial<Record<"uploads" | "put" | "posts", Response
 }
 
 const image = new Blob([new Uint8Array([1, 2, 3])], { type: "image/webp" });
-const fields = { title: "テスト_題", body: "", takenOn: "2026-09-30", recipe: { version: 4 } };
+const fields = {
+  title: "テスト_題",
+  body: "",
+  takenOn: "2026-09-30",
+  recipe: { version: 4 },
+  visibility: "unlisted" as const,
+};
 
 describe("submitPost", () => {
   it("asks for a place, puts the image there, then posts it", async () => {
@@ -74,6 +80,7 @@ describe("submitPost", () => {
       body: null,
       takenOn: "2026-09-30",
       recipe: { version: 4 },
+      visibility: "unlisted",
     });
   });
 
