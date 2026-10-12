@@ -1,4 +1,4 @@
-import { and, inArray, isNotNull, lte, notInArray } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, lte, notExists, notInArray } from "drizzle-orm";
 import { schema } from "@lumorphia-scenote/db";
 import { TMP_PREFIX, tmpKey } from "../storage-keys.ts";
 import type { JobDefinition } from "./context.ts";
@@ -7,7 +7,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /**
  * 期限を過ぎた受け取りの枠と、その画像を消す。派生画像を作っている投稿が指す枠は残す。
- * 枠の無い一時置き場の画像 (PUT だけされたもの、消し損ねたもの) も消す。原本を持たないため (ADR-0003)
+ * 枠の無い一時置き場の画像 (PUT だけされたもの、消し損ねたもの) も消す。原本を持たないため (ADR-0003)。
+ * どの投稿にも使われなくなったタグも消す (消えた投稿の言葉を残さない)
  */
 export const uploadCleanupJob: JobDefinition<object> = {
   name: "upload-cleanup",
@@ -33,7 +34,21 @@ export const uploadCleanupJob: JobDefinition<object> = {
     const keep = new Set(known.map((r) => tmpKey(r.id)));
     const orphans = keys.filter((k) => !keep.has(k));
     if (orphans.length) await storage.delete(orphans);
-    log.info({ expired: expired.length, removed: orphans.length }, "uploads cleaned");
+    const unusedTags = await db
+      .delete(schema.tags)
+      .where(
+        notExists(
+          db
+            .select({ one: schema.postTags.tagId })
+            .from(schema.postTags)
+            .where(eq(schema.postTags.tagId, schema.tags.id)),
+        ),
+      )
+      .returning({ id: schema.tags.id });
+    log.info(
+      { expired: expired.length, removed: orphans.length, unusedTags: unusedTags.length },
+      "uploads cleaned",
+    );
   },
 };
 

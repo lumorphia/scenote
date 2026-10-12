@@ -11,6 +11,7 @@ import {
   type Variant,
 } from "../storage-keys.ts";
 import { DomainError } from "./errors.ts";
+import { replacePostTags, tagsOf, validateTags, type TagInput } from "./tags.ts";
 
 export type PostStatus = "processing" | "published" | "failed";
 export const VISIBILITIES = ["public", "unlisted", "private"] as const;
@@ -30,6 +31,8 @@ export type CreatePostInput = {
   recipe?: unknown;
   /** 既定は公開 (ADR-0004) */
   visibility?: Visibility | undefined;
+  /** タグ。表記のゆれはそろえる (tags.ts) */
+  tags?: readonly string[] | undefined;
 };
 
 function visibility(value: Visibility | undefined): Visibility {
@@ -82,6 +85,7 @@ export async function createPost(
     recipe: recipe(input.recipe),
     visibility: visibility(input.visibility),
   };
+  const tags = validateTags(input.tags ?? []);
   return db.transaction(async (tx) => {
     const [upload] = await tx
       .select()
@@ -106,6 +110,7 @@ export async function createPost(
       uploadId: upload.id,
       ...fields,
     });
+    await replacePostTags(tx, postId, tags);
     await jobs.enqueue("image-process", { postId }, { transaction: tx, singletonKey: postId });
     return { postId };
   });
@@ -147,6 +152,7 @@ export type PostView = {
   title: string | null;
   body: string | null;
   takenOn: string | null;
+  tags: TagInput[];
   image: {
     display: string;
     thumb: string;
@@ -182,6 +188,7 @@ export async function getPost(
     title: post.title,
     body: post.body,
     takenOn: post.takenOn,
+    tags: await tagsOf(db, post.id),
     image: ready
       ? {
           display: imageUrl(post, imageBaseUrl, "display"),
@@ -234,4 +241,23 @@ export async function readPostImage(
     post.status === "published" ? await storage.get(variantKey(post.imageKeyBase, variant)) : null;
   if (!body) throw new DomainError("not_found", "image not found");
   return { body, contentType: "image/webp" };
+}
+
+/** タグを付け直す (本人だけ) */
+export async function changeTags(
+  { db }: { db: Database },
+  userId: string,
+  postId: string,
+  input: readonly string[],
+): Promise<void> {
+  const tags = validateTags(input);
+  await db.transaction(async (tx) => {
+    const [post] = await tx
+      .select({ id: schema.posts.id })
+      .from(schema.posts)
+      .where(and(eq(schema.posts.id, postId), eq(schema.posts.userId, userId)))
+      .for("update");
+    if (!post) throw new DomainError("not_found", "post not found");
+    await replacePostTags(tx, postId, tags);
+  });
 }
