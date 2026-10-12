@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@lumorphia-scenote/db": "workspace:*",
+    "@lumorphia/e2e": "file:../platform/.worktrees/e2e/packages/e2e",
     "@playwright/test": "^1.63.0",
     "@types/node": "^24.19.1",
     "@vitest/coverage-v8": "^5.0.3",
