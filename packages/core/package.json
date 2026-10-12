@@ -5,7 +5,9 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./domain/*": "./src/domain/*.ts"
+    "./domain/*": "./src/domain/*.ts",
+    "./jobs": "./src/jobs/index.ts",
+    "./storage-keys": "./src/storage-keys.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
@@ -13,6 +15,12 @@
   },
   "dependencies": {
     "@lumorphia-scenote/db": "workspace:*",
-    "drizzle-orm": "^0.45.3"
+    "@lumorphia/media": "1.1.0",
+    "@lumorphia/storage": "1.0.0",
+    "drizzle-orm": "^0.45.3",
+    "pg-boss": "^12.37.1"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.5"
   }
 }
