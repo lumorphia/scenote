@@ -6,10 +6,15 @@ import { JOB_NAMES, type EnqueueOptions, type JobName, type JobQueue } from "./q
 import type { JobContext, JobDefinition, JobLog } from "./context.ts";
 
 /**
- * 同じキー (singletonKey) で待っている・走っているジョブを 1 本にするキュー。投稿ごとの派生画像と画像の移動、毎時の掃除。
+ * 同じキー (singletonKey) で待っている・走っているジョブを 1 本にするキュー。投稿ごとの派生画像と画像の移動、定期の掃除と同期。
  * image-delete はキーを付けずに何本も入るので、ここに入れない (exclusive はキーの無いジョブ同士も 1 本にする)
  */
-const EXCLUSIVE: ReadonlySet<JobName> = new Set(["image-process", "image-move", "upload-cleanup"]);
+const EXCLUSIVE: ReadonlySet<JobName> = new Set([
+  "image-process",
+  "image-move",
+  "upload-cleanup",
+  "place-sync",
+]);
 
 /** 失敗は pg-boss が少し間をおいて 3 回までやり直す。走りっぱなしは 5 分で打ち切る */
 export async function prepareQueues(boss: Pick<PgBoss, "createQueue">): Promise<void> {

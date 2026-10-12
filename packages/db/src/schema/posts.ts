@@ -1,6 +1,7 @@
 import { date, index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { id, timestamps } from "./_common.ts";
 import { users } from "./users.ts";
+import { places } from "./places.ts";
 
 /**
  * ブラウザから署名付き PUT で置く、受け取りの枠 (lumorphia/prismtone の upload_sessions と同じ)。
@@ -64,6 +65,9 @@ export const posts = pgTable(
     body: text("body"),
     /** 撮影日。既定はブラウザが読んだファイルの更新日時の日付。利用者が変えたり消したりできる (要件定義書 9.2) */
     takenOn: date("taken_on"),
+    /** 撮影場所。候補から選んだら place_id、自由入力なら place_text (どちらか一方。要件定義書 10 章) */
+    placeId: uuid("place_id").references(() => places.id, { onDelete: "set null" }),
+    placeText: text("place_text"),
     /** 現像のレシピ (@lumorphia/editor-recipe)。画像には埋め込まず、ここに残す (ADR-0003) */
     recipe: jsonb("recipe"),
     /** 受け付けなかった理由 (@lumorphia/media の ImageRejectedError の reason など) */

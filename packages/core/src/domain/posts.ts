@@ -12,6 +12,7 @@ import {
 } from "../storage-keys.ts";
 import { DomainError } from "./errors.ts";
 import { replacePostTags, tagsOf, validateTags, type TagInput } from "./tags.ts";
+import { isOfferedPlace } from "./places.ts";
 
 export type PostStatus = "processing" | "published" | "failed";
 export const VISIBILITIES = ["public", "unlisted", "private"] as const;
@@ -20,8 +21,29 @@ export type Visibility = (typeof VISIBILITIES)[number];
 /** タイトルと本文の長さの上限 (タイトルは lumorphia/prismtone と同じ) */
 export const MAX_TITLE_LENGTH = 100;
 export const MAX_BODY_LENGTH = 2000;
+/** 自由入力の撮影場所の長さの上限 */
+export const MAX_PLACE_TEXT_LENGTH = 50;
 
-export type CreatePostInput = {
+export type PlaceInput = {
+  placeId?: string | null | undefined;
+  placeText?: string | null | undefined;
+};
+
+/** 候補から選んだ場所か、自由に書いた場所か、どちらか一方 (要件定義書 10 章) */
+async function place(
+  db: Database,
+  input: PlaceInput,
+): Promise<{ placeId: string | null; placeText: string | null }> {
+  const placeText = text(input.placeText, MAX_PLACE_TEXT_LENGTH, "placeText");
+  const placeId = input.placeId ?? null;
+  if (placeId && placeText)
+    throw new DomainError("validation", "choose a place or write one, not both");
+  if (placeId && !(await isOfferedPlace(db, placeId)))
+    throw new DomainError("validation", "unknown place");
+  return { placeId, placeText };
+}
+
+export type CreatePostInput = PlaceInput & {
   uploadId: string;
   title?: string | null | undefined;
   body?: string | null | undefined;
@@ -86,6 +108,7 @@ export async function createPost(
     visibility: visibility(input.visibility),
   };
   const tags = validateTags(input.tags ?? []);
+  const where = await place(db, input);
   return db.transaction(async (tx) => {
     const [upload] = await tx
       .select()
@@ -109,6 +132,7 @@ export async function createPost(
       imageKeyBase: newImageKeyBase(postId, fields.visibility),
       uploadId: upload.id,
       ...fields,
+      ...where,
     });
     await replacePostTags(tx, postId, tags);
     await jobs.enqueue("image-process", { postId }, { transaction: tx, singletonKey: postId });
@@ -153,6 +177,8 @@ export type PostView = {
   body: string | null;
   takenOn: string | null;
   tags: TagInput[];
+  /** 候補から選んだ場所なら id と地域つき、自由入力なら名前だけ */
+  place: { id: string | null; regionName: string | null; name: string } | null;
   image: {
     display: string;
     thumb: string;
@@ -189,6 +215,7 @@ export async function getPost(
     body: post.body,
     takenOn: post.takenOn,
     tags: await tagsOf(db, post.id),
+    place: await placeOf(db, post),
     image: ready
       ? {
           display: imageUrl(post, imageBaseUrl, "display"),
@@ -260,4 +287,28 @@ export async function changeTags(
     if (!post) throw new DomainError("not_found", "post not found");
     await replacePostTags(tx, postId, tags);
   });
+}
+
+async function placeOf(db: Database, post: PostRow): Promise<PostView["place"]> {
+  if (post.placeId) {
+    const [row] = await db.select().from(schema.places).where(eq(schema.places.id, post.placeId));
+    if (row) return { id: row.id, regionName: row.regionName, name: row.name };
+  }
+  return post.placeText ? { id: null, regionName: null, name: post.placeText } : null;
+}
+
+/** 撮影場所を付け直す (本人だけ)。どちらも無ければ外す */
+export async function changePlace(
+  { db }: { db: Database },
+  userId: string,
+  postId: string,
+  input: PlaceInput,
+): Promise<void> {
+  const where = await place(db, input);
+  const [changed] = await db
+    .update(schema.posts)
+    .set(where)
+    .where(and(eq(schema.posts.id, postId), eq(schema.posts.userId, userId)))
+    .returning({ id: schema.posts.id });
+  if (!changed) throw new DomainError("not_found", "post not found");
 }
