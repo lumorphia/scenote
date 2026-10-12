@@ -5,6 +5,10 @@ import { genericOAuth } from "better-auth/plugins/generic-oauth";
 import { createLumorphiaOAuthConfig, type VerifiedLogin } from "@lumorphia/auth-client";
 import { schema, type Database } from "@lumorphia-scenote/db";
 import {
+  prepareLoginAfterDeletion,
+  restoreOnLogin,
+} from "@lumorphia-scenote/core/domain/lumorphia-account-events";
+import {
   lumorphiaPlaceholderEmail,
   releaseHandle,
   syncLumorphiaProfile,
@@ -25,14 +29,16 @@ export function runAuthRequest<T>(handler: () => Promise<T>): Promise<T> {
 }
 
 /** LUMORPHIA_* が揃っていれば「Lumorphia でログイン」の設定を返す (ADR-0009) */
-function lumorphiaProvider(env: Env) {
+function lumorphiaProvider(db: Database, env: Env) {
   const config = lumorphiaConfig(env);
   if (!config) return null;
   const base = createLumorphiaOAuthConfig({
     ...config,
-    onVerifiedLogin(login) {
+    async onVerifiedLogin(login) {
       const store = lumorphiaLogin.getStore();
       if (!store) throw new Error("Missing Lumorphia login context");
+      // 退会から 30 日を過ぎた人が残っていれば、先に消して新しく始めさせる (ADR-0010)
+      await prepareLoginAfterDeletion(db, login.claims.sub);
       store.login = login;
     },
   });
@@ -50,7 +56,7 @@ function lumorphiaProvider(env: Env) {
 
 /** Better Auth のインスタンスを作る。ログインは Lumorphia アカウントだけ (ADR-0005、ADR-0009) */
 export function createAuth({ db, env }: { db: Database; env: Env }) {
-  const lumorphia = lumorphiaProvider(env);
+  const lumorphia = lumorphiaProvider(db, env);
   return betterAuth({
     appName: "Scenote",
     baseURL: env.AUTH_BASE_URL,
@@ -114,6 +120,8 @@ export function createAuth({ db, env }: { db: Database; env: Env }) {
           before: async (session) => {
             const login = lumorphiaLogin.getStore()?.login;
             if (!login) return;
+            // 知らせより先にログインした退会中の人は、ここで戻す (accounts では active なので。ADR-0010)
+            await restoreOnLogin(db, session.userId);
             // 写しを新しくし、back-channel logout と end-session のために Lumorphia の sid と ID トークンを持つ
             await syncLumorphiaProfile(db, session.userId, {
               handle: login.claims.handle,

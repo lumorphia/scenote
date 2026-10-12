@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import fp from "fastify-plugin";
 import helmet from "@fastify/helmet";
-import { LUMORPHIA_BACKCHANNEL_PATH } from "../lumorphia-paths.ts";
+import { LUMORPHIA_ACCOUNT_EVENTS_PATH, LUMORPHIA_BACKCHANNEL_PATH } from "../lumorphia-paths.ts";
 import { buildCspDirectives, CSP_NONCE_HEADER, CSP_REPORT_PATH, serializeCsp } from "../csp.ts";
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -79,10 +79,16 @@ export const securityPlugin = fp(
     );
 
     // CSRF: 変更系は同一オリジンからの Origin ヘッダを要求する。
-    // accounts からの back-channel logout はサーバー間の POST で Origin が付かない。署名で守る (ADR-0009)
+    // accounts からの back-channel logout と退会の知らせは、サーバー間の POST で Origin が付かない。
+    // 署名で守る (ADR-0009、ADR-0010)
     app.addHook("onRequest", async (req, reply) => {
       if (!MUTATING.has(req.method) || !req.url.startsWith("/api/")) return;
-      if (req.url === CSP_REPORT_PATH || req.url === LUMORPHIA_BACKCHANNEL_PATH) return;
+      if (
+        req.url === CSP_REPORT_PATH ||
+        req.url === LUMORPHIA_BACKCHANNEL_PATH ||
+        req.url === LUMORPHIA_ACCOUNT_EVENTS_PATH
+      )
+        return;
       const origin = req.headers.origin;
       if (!origin) {
         return reply.code(403).send({ error: { code: "forbidden", message: "missing origin" } });

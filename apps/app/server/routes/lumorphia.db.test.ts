@@ -227,4 +227,44 @@ describe.skipIf(!url)("Lumorphia login (PostgreSQL)", () => {
       expect((await me(here)).user).not.toBeNull();
     });
   });
+
+  describe("account events", () => {
+    const send = async (body: Record<string, string>) => {
+      const res = await fetch(`${mock.controlUrl}/_e2e/account-event`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return (await res.json()) as { eventId: string; status: number };
+    };
+
+    it("accepts a deletion from accounts", async () => {
+      const u = lumorphiaUser();
+      await loginWithLumorphia(app, mock, u);
+      expect((await send({ sub: u.sub, state: "deleted" })).status).toBe(204);
+    });
+
+    it("ends the deleted user's session", async () => {
+      const u = lumorphiaUser();
+      const { cookie } = await loginWithLumorphia(app, mock, u);
+      await send({ sub: u.sub, state: "deleted" });
+      expect((await me(cookie)).user).toBeNull();
+    });
+
+    it("brings the user back when they log in within the recovery period", async () => {
+      const u = lumorphiaUser();
+      await loginWithLumorphia(app, mock, u);
+      await send({ sub: u.sub, state: "deleted" });
+      await loginWithLumorphia(app, mock, u);
+      expect((await userOf(u.sub))?.status).toBe("active");
+    });
+
+    it("accepts the same notice sent again", async () => {
+      const u = lumorphiaUser();
+      await loginWithLumorphia(app, mock, u);
+      const { eventId } = await send({ sub: u.sub, state: "purged" });
+      expect((await send({ sub: u.sub, resend: eventId })).status).toBe(204);
+      expect(await userOf(u.sub)).toBeUndefined();
+    });
+  });
 });
