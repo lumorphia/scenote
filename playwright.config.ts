@@ -78,6 +78,9 @@ export default defineConfig({
         DEV_TLS_CERT: `${TLS}cert.pem`,
         DEV_TLS_KEY: `${TLS}key.pem`,
         API_RATE_LIMIT_DISABLED: "1",
+        // 画像はアプリの中 (メモリ) に置き、リポジトリの .data/ に書かない。ジョブもアプリの中で走る
+        STORAGE_DRIVER: "memory",
+        JOBS_INLINE: "1",
         AUTH_SECRET: "test-e2e-secret-test-e2e-secret-1234",
         AUTH_BASE_URL: `https://${HOST}:${PORT}`,
         LUMORPHIA_ISSUER: LUMORPHIA.issuer,

@@ -13,6 +13,12 @@ import { clientIp } from "./client-ip.ts";
 import { dbPlugin } from "./plugins/db.ts";
 import { modelsPlugin } from "./plugins/models.ts";
 import { authPlugin } from "./plugins/auth.ts";
+import { storagePlugin } from "./plugins/storage.ts";
+import { devStoragePlugin } from "./plugins/dev-storage.ts";
+import { jobsPlugin } from "./plugins/jobs.ts";
+import { postRoutes } from "./routes/posts.ts";
+import type { ObjectStorage } from "@lumorphia/storage";
+import type { JobQueue } from "@lumorphia-scenote/core/jobs";
 import { meRoutes } from "./routes/me.ts";
 import { lumorphiaRoutes } from "./routes/lumorphia.ts";
 import { securityPlugin } from "./plugins/security.ts";
@@ -27,6 +33,10 @@ export type BuildAppOptions = {
   skipDb?: boolean;
   /** テスト用: 認識のモデルの置き場を差し替える (既定は apps/app/models。`pnpm models` が揃える) */
   modelsDir?: string;
+  /** テスト用: 画像の置き場所を差し替える (既定は storage-config.ts) */
+  storage?: ObjectStorage;
+  /** テスト用: ジョブの投入を差し替える (既定は JOBS_INLINE か pg-boss) */
+  jobs?: JobQueue;
   /** テスト用: 未知の 500 エラーの外部通知を差し替える */
   captureException?: CaptureException;
 };
@@ -77,6 +87,12 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
     exposeStatusRoute: false,
   });
 
+  // 画像の置き場所とジョブ。開発とテストの /_storage は React Router の catch-all より先に登録する。
+  // ジョブはログインの前に用意する (退会から 30 日を過ぎた人の画像を消すため)
+  await app.register(storagePlugin, opts.storage ? { storage: opts.storage } : {});
+  await app.register(devStoragePlugin);
+  if (!opts.skipDb) await app.register(jobsPlugin, opts.jobs ? { jobs: opts.jobs } : {});
+
   if (!opts.skipDb) await app.register(authPlugin);
 
   // 現像の認識のモデルと WASM (/models/)。React Router の catch-all より先に登録する
@@ -99,6 +115,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
       if (!opts.skipDb) {
         await api.register(meRoutes);
         await api.register(lumorphiaRoutes);
+        await api.register(postRoutes);
       }
       // /api 配下の未知のパスは React Router の catch-all (/*) ではなく JSON の 404 を返す
       api.all("/*", { schema: { hide: true } }, async (req, reply) => {

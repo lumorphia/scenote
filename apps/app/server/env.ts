@@ -29,8 +29,24 @@ const envSchema = z.object({
   LUMORPHIA_ISSUER: optional(z.string().url().startsWith("https://")),
   LUMORPHIA_CLIENT_ID: optional(z.string().min(1)),
   LUMORPHIA_CLIENT_SECRET: optional(z.string().min(1)),
-  /** 投稿画像の配信元 (R2 のカスタムドメイン)。CSP の img-src に入る。投稿の段で使う */
-  PUBLIC_IMAGE_BASE_URL: z.string().url().default("https://img.example.invalid"),
+  /**
+   * 投稿画像の配信元 (R2 のカスタムドメイン)。CSP の img-src に入る。production では必須。
+   * 開発とテストは loadEnv がアプリ自身の /_storage にする (plugins/dev-storage.ts)
+   */
+  PUBLIC_IMAGE_BASE_URL: z
+    .string()
+    .refine((v) => v.startsWith("/") || URL.canParse(v), "must be a URL or a path"),
+  /** ブラウザから受け取る画像の上限。現像 (@lumorphia/editor-engine) の MAX_UPLOAD_BYTES と同じ (要件定義書 7 章) */
+  UPLOAD_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(30 * 1024 * 1024),
+  /** ジョブを worker ではなくアプリの中で走らせる (開発と E2E。既定で有効)。production では無視する */
+  JOBS_INLINE: z
+    .enum(["0", "1", "true", "false"])
+    .default("1")
+    .transform((v) => v === "1" || v === "true"),
   /** /api 全体の IP ごとの上限 (1 分) */
   API_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(120),
   /**
@@ -56,12 +72,19 @@ const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
+/** 開発とテストでアプリ自身が画像を受け取り・配るパス (plugins/dev-storage.ts) */
+export const DEV_STORAGE_PATH = "/_storage";
+
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
+  const production = source.NODE_ENV === "production";
   const parsed = envSchema.safeParse({
     ...source,
     AUTH_SECRET:
-      source.AUTH_SECRET ??
-      (source.NODE_ENV === "production" ? undefined : "development-only-scenote-auth-secret-0123"),
+      source.AUTH_SECRET ?? (production ? undefined : "development-only-scenote-auth-secret-0123"),
+    PUBLIC_IMAGE_BASE_URL:
+      source.PUBLIC_IMAGE_BASE_URL || (production ? undefined : DEV_STORAGE_PATH),
+    // 本番は必ず worker で動かす (アプリの再起動でジョブを失わない)
+    JOBS_INLINE: production ? "0" : source.JOBS_INLINE || undefined,
   });
   if (!parsed.success) {
     const missing = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ");

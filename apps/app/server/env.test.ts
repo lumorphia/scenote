@@ -33,6 +33,45 @@ describe("loadEnv", () => {
   });
 });
 
+describe("loadEnv for posting", () => {
+  it("serves development images from the app itself", () => {
+    expect(loadEnv(base).PUBLIC_IMAGE_BASE_URL).toBe("/_storage");
+  });
+
+  it("requires the image host in production", () => {
+    expect(() =>
+      loadEnv({
+        ...base,
+        NODE_ENV: "production",
+        AUTH_SECRET: "test-production-secret-0123456789",
+      }),
+    ).toThrow(/PUBLIC_IMAGE_BASE_URL/);
+  });
+
+  it("runs jobs inside the app during development", () => {
+    expect(loadEnv(base).JOBS_INLINE).toBe(true);
+  });
+
+  it("can hand jobs to the worker during development", () => {
+    expect(loadEnv({ ...base, JOBS_INLINE: "0" }).JOBS_INLINE).toBe(false);
+  });
+
+  it("never runs jobs inside the app in production", () => {
+    const env = loadEnv({
+      ...base,
+      NODE_ENV: "production",
+      AUTH_SECRET: "test-production-secret-0123456789",
+      PUBLIC_IMAGE_BASE_URL: "https://img.example.invalid",
+      JOBS_INLINE: "1",
+    });
+    expect(env.JOBS_INLINE).toBe(false);
+  });
+
+  it("accepts images up to the editor's limit by default", () => {
+    expect(loadEnv(base).UPLOAD_MAX_BYTES).toBe(30 * 1024 * 1024);
+  });
+});
+
 describe("lumorphiaConfig", () => {
   it("is null until the issuer, the client and the secret are all set", () => {
     expect(lumorphiaConfig(loadEnv({ ...base, ...lumorphia, LUMORPHIA_CLIENT_SECRET: "" }))).toBe(
