@@ -12,7 +12,7 @@ import {
   VISIBILITIES,
 } from "@lumorphia-scenote/core/domain/posts";
 import { DomainError } from "@lumorphia-scenote/core";
-import { findBlockedText } from "@lumorphia-scenote/core/domain/blocked-text";
+import { checkText } from "@lumorphia-scenote/core/domain/blocked-text";
 import {
   getPublicProfile,
   listPublicPosts,
@@ -140,7 +140,7 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
       config: { rateLimit: { max: 60, timeWindow: "1 minute" } },
       preValidation: [app.requireAuth],
     },
-    async (req) => ({ blocked: findBlockedText(req.body) }),
+    async (req) => ({ blocked: await checkText(app.db, req.body) }),
   );
 
   app.get(

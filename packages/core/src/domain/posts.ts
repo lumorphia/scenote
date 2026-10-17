@@ -111,7 +111,7 @@ export async function createPost(
   const tags = validateTags(input.tags ?? []);
   const where = await place(db, input);
   // NG 語 (ADR-0015)。受け取りの枠を使う前に断る
-  assertNoBlockedText({
+  await assertNoBlockedText(db, {
     ...fields,
     tags: tags.map((t) => t.displayName),
     placeText: where.placeText,
@@ -314,7 +314,7 @@ export async function changeTags(
   input: readonly string[],
 ): Promise<void> {
   const tags = validateTags(input);
-  assertNoBlockedText({ tags: tags.map((t) => t.displayName) });
+  await assertNoBlockedText(db, { tags: tags.map((t) => t.displayName) });
   await db.transaction(async (tx) => {
     const [post] = await tx
       .select({ id: schema.posts.id })
@@ -342,7 +342,7 @@ export async function changePlace(
   input: PlaceInput,
 ): Promise<void> {
   const where = await place(db, input);
-  assertNoBlockedText({ placeText: where.placeText });
+  await assertNoBlockedText(db, { placeText: where.placeText });
   const [changed] = await db
     .update(schema.posts)
     .set(where)

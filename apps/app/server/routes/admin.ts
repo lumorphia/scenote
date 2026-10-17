@@ -15,6 +15,15 @@ import {
   REPORT_REASONS,
   restorePost,
 } from "@lumorphia-scenote/core/domain/reports";
+import {
+  addBlockedTerm,
+  deleteBlockedTerm,
+  importBlockedTerms,
+  IMPORT_MAX_TERMS,
+  listBlockedTerms,
+  setBlockedTermEnabled,
+  TERM_MAX_LENGTH,
+} from "@lumorphia-scenote/core/domain/blocked-terms";
 import { errorSchema, withErrors } from "../schemas/error.ts";
 
 /** ID の形でないものは、無い投稿と同じに答える */
@@ -270,6 +279,122 @@ export const adminRoutes: FastifyPluginAsyncZod = async (app) => {
     async (req, reply) => {
       await restorePost(
         { db: app.db, jobs: app.jobs },
+        await adminSubOf(app, req.user!.id),
+        req.params.id,
+        req.body.reason,
+      );
+      return reply.code(204).send(null);
+    },
+  );
+
+  // NG 語の辞書 (S7b-2、ADR-0022)。語はここと DB にだけあり、利用者には返さない
+  const termView = z.object({
+    id: z.string(),
+    term: z.string(),
+    match: z.enum(["exact", "contains"]),
+    source: z.string(),
+    enabled: z.boolean(),
+    createdAt: z.date(),
+  });
+  const termParams = z.object({ id: z.string().regex(UUID, "not found") });
+
+  app.get(
+    "/admin/blocked-terms",
+    {
+      schema: {
+        tags: ["admin"],
+        summary: "NG 語の辞書",
+        querystring: z.object({
+          q: z.string().max(TERM_MAX_LENGTH).optional(),
+          cursor: z.string().max(500).optional(),
+        }),
+        response: withErrors({
+          200: z.object({ items: z.array(termView), nextCursor: z.string().nullable() }),
+        }),
+      },
+      preValidation: [app.requireAdmin],
+    },
+    async (req) => listBlockedTerms(app.db, req.query),
+  );
+
+  app.post(
+    "/admin/blocked-terms",
+    {
+      schema: {
+        tags: ["admin"],
+        summary: "NG 語を 1 つ足す",
+        body: reasonBody.extend({
+          term: z.string().max(TERM_MAX_LENGTH * 4),
+          match: z.enum(["exact", "contains"]),
+        }),
+        response: withErrors({ 201: termView, 409: errorSchema }),
+      },
+      preValidation: [app.requireAdmin],
+    },
+    async (req, reply) =>
+      reply
+        .code(201)
+        .send(await addBlockedTerm(app.db, await adminSubOf(app, req.user!.id), req.body)),
+  );
+
+  app.post(
+    "/admin/blocked-terms/import",
+    {
+      schema: {
+        tags: ["admin"],
+        summary: "辞書 (1 行 1 語) をまとめて入れる",
+        body: reasonBody.extend({
+          text: z.string().max(IMPORT_MAX_TERMS * (TERM_MAX_LENGTH + 1)),
+          match: z.enum(["exact", "contains"]),
+          source: z.string().max(80),
+        }),
+        response: withErrors({ 200: z.object({ added: z.number(), skipped: z.number() }) }),
+      },
+      bodyLimit: 4 * 1024 * 1024,
+      preValidation: [app.requireAdmin],
+    },
+    async (req) => importBlockedTerms(app.db, await adminSubOf(app, req.user!.id), req.body),
+  );
+
+  app.patch(
+    "/admin/blocked-terms/:id",
+    {
+      schema: {
+        tags: ["admin"],
+        summary: "NG 語を照合に使うかを切り替える",
+        params: termParams,
+        body: reasonBody.extend({ enabled: z.boolean() }),
+        response: withErrors({ 204: z.null() }),
+      },
+      preValidation: [app.requireAdmin],
+    },
+    async (req, reply) => {
+      await setBlockedTermEnabled(
+        app.db,
+        await adminSubOf(app, req.user!.id),
+        req.params.id,
+        req.body.enabled,
+        req.body.reason,
+      );
+      return reply.code(204).send(null);
+    },
+  );
+
+  app.delete(
+    "/admin/blocked-terms/:id",
+    {
+      schema: {
+        tags: ["admin"],
+        summary: "NG 語を消す",
+        params: termParams,
+        body: reasonBody,
+        response: withErrors({ 204: z.null() }),
+      },
+      preValidation: [app.requireAdmin],
+    },
+    async (req, reply) => {
+      await deleteBlockedTerm(
+        app.db,
         await adminSubOf(app, req.user!.id),
         req.params.id,
         req.body.reason,
