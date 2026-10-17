@@ -21,5 +21,6 @@
 | [0017](0017-post-deletion.md)                 | 投稿の削除はすぐに行を消し、画像は worker が消す                           | Accepted |
 | [0018](0018-ogp.md)                           | OGP の画像は派生画像のジョブで作り、meta は load context で SSR する       | Accepted |
 | [0019](0019-admin.md)                         | 管理画面は Access と許可リストで二重に守り、操作を記録する                 | Accepted |
+| [0020](0020-review.md)                        | 保留・要確認の投稿は運営が理由を書いて公開か非表示に決める                 | Accepted |
 
 本文中の「prismtone ADR-NNNN」は lumorphia/prismtone の ADR を指す。
