@@ -151,7 +151,8 @@ type PostRow = typeof schema.posts.$inferSelect;
 
 /**
  * 見られるかの判定。投稿の API、画像の中継、これからの一覧と OGP が、すべてここを通す (ADR-0004)。
- * 本人はいつでも見られる。ほかの人は、画像ができていて、投稿者が退会中でなく、非公開でないときだけ
+ * 本人はいつでも見られる。ほかの人は、画像ができていて、投稿者が退会中でなく、非公開でないときだけ。
+ * 一覧 (browse.ts の listable) は、これに「公開」を足したものと同じでなければならない (browse.db.test.ts で突き合わせる)
  */
 export function canView(
   post: Pick<PostRow, "userId" | "status" | "visibility">,
@@ -201,7 +202,11 @@ const hasImages = (post: Pick<PostRow, "status">) =>
   post.status === "published" || post.status === "held";
 
 /** 画像の URL。非公開の置き場所 (移している途中も含む) にあれば、アプリの中継を指す (ADR-0012) */
-function imageUrl(post: PostRow, imageBaseUrl: string, variant: Variant): string {
+export function imageUrl(
+  post: Pick<PostRow, "id" | "imageKeyBase">,
+  imageBaseUrl: string,
+  variant: Variant,
+): string {
   return isPrivateKey(post.imageKeyBase)
     ? `/api/posts/${post.id}/image/${variant}`
     : `${imageBaseUrl}/${variantKey(post.imageKeyBase, variant)}`;

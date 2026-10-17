@@ -289,6 +289,56 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
     });
   });
 
+  // 投稿一覧 (S6a、ADR-0016)
+  describe("the list of posts", () => {
+    type Page = {
+      items: { id: string; thumb: string; author: { handle: string } }[];
+      nextCursor: string | null;
+    };
+    const listPosts = (query = "") => app.inject({ method: "GET", url: `/api/posts${query}` });
+
+    it("shows public posts to anyone, newest first, with the author", async () => {
+      const user = lumorphiaUser();
+      const { cookie } = await loginWithLumorphia(app, mock, user);
+      const { postId: older } = await post(cookie);
+      await published(cookie, older);
+      const { postId: newer } = await post(cookie);
+      await published(cookie, newer);
+      const page = (await listPosts()).json() as Page;
+      expect(page.items.map((i) => i.id)).toEqual([newer, older]);
+      expect(page.items[0]!.author.handle).toBe(user.handle);
+    });
+
+    it("leaves out unlisted and private posts", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      for (const visibility of ["unlisted", "private"]) {
+        const { postId } = await post(cookie, { visibility });
+        await published(cookie, postId);
+      }
+      expect(((await listPosts()).json() as Page).items).toEqual([]);
+    });
+
+    it("pages with the cursor it hands out", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      for (let i = 0; i < 3; i++) await published(cookie, (await post(cookie)).postId);
+      const first = (await listPosts("?limit=2")).json() as Page;
+      const second = (
+        await listPosts(`?limit=2&cursor=${encodeURIComponent(first.nextCursor!)}`)
+      ).json() as Page;
+      expect(first.items).toHaveLength(2);
+      expect(second).toMatchObject({ nextCursor: null });
+      expect(second.items).toHaveLength(1);
+    });
+
+    it("refuses a page size over the limit", async () => {
+      expect((await listPosts("?limit=1000")).statusCode).toBe(400);
+    });
+
+    it("refuses a broken cursor", async () => {
+      expect((await listPosts("?cursor=test-broken")).statusCode).toBe(400);
+    });
+  });
+
   it("lets the owner make a post private, and hides it at once", async () => {
     const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
     const { postId } = await post(cookie);

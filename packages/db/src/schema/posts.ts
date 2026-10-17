@@ -9,6 +9,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { id, timestamps } from "./_common.ts";
 import { users } from "./users.ts";
 import { places } from "./places.ts";
@@ -96,5 +97,11 @@ export const posts = pgTable(
     publishedAt: timestamp("published_at", { withTimezone: true }),
     ...timestamps,
   },
-  (t) => [index("posts_user_created_idx").on(t.userId, t.createdAt)],
+  (t) => [
+    index("posts_user_created_idx").on(t.userId, t.createdAt),
+    // 公開の投稿の一覧 (新しい順、ADR-0016)
+    index("posts_public_list_idx")
+      .on(t.publishedAt.desc(), t.id.desc())
+      .where(sql`${t.status} = 'published' and ${t.visibility} = 'public'`),
+  ],
 );
