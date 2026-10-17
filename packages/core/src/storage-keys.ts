@@ -17,9 +17,16 @@ export const newImageKeyBase = (postId: string, visibility: "public" | "unlisted
 
 export const isPrivateKey = (base: string) => base.startsWith(PRIVATE_PREFIX);
 
-export type Variant = "display" | "thumb";
-export const VARIANTS: readonly Variant[] = ["display", "thumb"];
-export const variantKey = (base: string, variant: Variant) => `${base}/${variant}.webp`;
+/** display は詳細、thumb は一覧、ogp は共有 (1200x630 の JPEG、要件定義書 18.1) */
+export type Variant = "display" | "thumb" | "ogp";
+export const VARIANTS: readonly Variant[] = ["display", "thumb", "ogp"];
+const FILES: Record<Variant, { name: string; contentType: string }> = {
+  display: { name: "display.webp", contentType: "image/webp" },
+  thumb: { name: "thumb.webp", contentType: "image/webp" },
+  ogp: { name: "ogp.jpg", contentType: "image/jpeg" },
+};
+export const variantKey = (base: string, variant: Variant) => `${base}/${FILES[variant].name}`;
+export const variantContentType = (variant: Variant) => FILES[variant].contentType;
 
 /** 削除後に CDN やブラウザに長く残らないよう短めにする (lumorphia/prismtone と同じ)。非公開は共有のキャッシュに載せない */
 export const PUBLIC_IMAGE_CACHE_CONTROL = "public, max-age=3600, must-revalidate";

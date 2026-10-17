@@ -14,9 +14,11 @@ import {
   isPrivateKey,
   newImageKeyBase,
   tmpKey,
+  variantContentType,
   VARIANTS,
   variantKey,
 } from "../storage-keys.ts";
+import { makeOgpImage } from "../ogp-image.ts";
 import type { JobContext, JobDefinition } from "./context.ts";
 
 export type ImageProcessData = { postId: string };
@@ -71,11 +73,17 @@ export function createImageProcessJob(
           ? newImageKeyBase(postId, "private")
           : post.imageKeyBase;
 
-      for (const variant of ["display", "thumb"] as const)
+      // 共有用の画像も同じ置き場所に置く。公開範囲の移動 (image-move) と削除に一緒についていく (ADR-0018)
+      const files = {
+        display: variants.display,
+        thumb: variants.thumb,
+        ogp: await makeOgpImage(variants.display),
+      };
+      for (const variant of VARIANTS)
         await storage.put({
           key: variantKey(base, variant),
-          body: variants[variant],
-          contentType: "image/webp",
+          body: files[variant],
+          contentType: variantContentType(variant),
           cacheControl: imageCacheControl(base),
         });
       const [updated] = await db

@@ -125,6 +125,26 @@ describe.skipIf(!databaseUrl)("image-process job (PostgreSQL)", () => {
       });
   });
 
+  // 共有用の画像 (S6e、要件定義書 16 章・18.1)。summary_large_image の 1200x630 の JPEG
+  it("makes a 1200x630 JPEG for sharing", async () => {
+    const { postId, base } = await postWith(await webpWithMetadata(), "image/webp");
+    await job.handler({ postId }, ctx);
+    const ogp = (await storage.get(variantKey(base, "ogp")))!;
+    expect(await sharp(ogp).metadata()).toMatchObject({ format: "jpeg", width: 1200, height: 630 });
+    expect(await storage.head(variantKey(base, "ogp"))).toMatchObject({
+      contentType: "image/jpeg",
+      cacheControl: PUBLIC_IMAGE_CACHE_CONTROL,
+    });
+  });
+
+  it("carries no EXIF in the sharing image", async () => {
+    const { postId, base } = await postWith(await webpWithMetadata(), "image/webp");
+    await job.handler({ postId }, ctx);
+    const ogp = (await storage.get(variantKey(base, "ogp")))!;
+    expect((await sharp(ogp).metadata()).exif).toBeUndefined();
+    expect(Buffer.from(ogp).includes("test-secret-place")).toBe(false);
+  });
+
   it("publishes the post with the image's size", async () => {
     const { postId } = await postWith(await webpWithMetadata(), "image/webp");
     await job.handler({ postId }, ctx);
@@ -216,7 +236,7 @@ describe.skipIf(!databaseUrl)("image-process job (PostgreSQL)", () => {
       },
     });
     await deleting.handler({ postId }, ctx);
-    for (const variant of ["display", "thumb"] as const)
+    for (const variant of ["display", "thumb", "ogp"] as const)
       expect(await storage.get(variantKey(base, variant))).toBeNull();
   });
 
@@ -302,6 +322,16 @@ describe.skipIf(!databaseUrl)("image-process job (PostgreSQL)", () => {
         expect(await storage.head(variantKey(post!.imageKeyBase, variant))).toMatchObject({
           cacheControl: PRIVATE_IMAGE_CACHE_CONTROL,
         });
+    });
+
+    it("keeps a held post's sharing image out of the public place too", async () => {
+      nsfw.nextScore(1);
+      const { postId } = await postWith(await webpWithMetadata(), "image/webp");
+      await judged.handler({ postId }, ctx);
+      const post = await reload(postId);
+      expect(await storage.head(variantKey(post!.imageKeyBase, "ogp"))).toMatchObject({
+        cacheControl: PRIVATE_IMAGE_CACHE_CONTROL,
+      });
     });
 
     it("keeps a held post's chosen visibility", async () => {
