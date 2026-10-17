@@ -167,4 +167,101 @@ describe.skipIf(!url)("the admin API (PostgreSQL)", () => {
       ).toBe(404);
     });
   });
+  // 通報の対応と、非表示を戻す (S7b-1、ADR-0021)
+  describe("reports", () => {
+    const base = () => new URL(app.env.AUTH_BASE_URL);
+    const send = (cookie: string, url: string, payload: object) =>
+      app.inject({
+        method: "POST",
+        url,
+        headers: {
+          cookie,
+          origin: base().origin,
+          host: base().host,
+          "content-type": "application/json",
+        },
+        payload,
+      });
+    /** 公開の投稿と、それへの通報を直接置く */
+    async function reported() {
+      const owner = lumorphiaUser();
+      const reporter = lumorphiaUser();
+      const { cookie: ownerCookie } = await loginWithLumorphia(app, mock, owner);
+      const { cookie: reporterCookie } = await loginWithLumorphia(app, mock, reporter);
+      const ownerRow = await app.db.query.users.findFirst({
+        where: eq(schema.users.lumorphiaSub, owner.sub),
+      });
+      const id = randomUUID();
+      await app.db.insert(schema.posts).values({
+        id,
+        userId: ownerRow!.id,
+        status: "published",
+        visibility: "public",
+        imageKeyBase: newImageKeyBase(id, "public"),
+        width: 1600,
+        height: 900,
+        publishedAt: new Date(),
+      });
+      await send(reporterCookie, `/api/posts/${id}/reports`, { reason: "depicted" });
+      return { id, ownerCookie, reporterCookie };
+    }
+    const admin = () => loginWithLumorphia(app, mock, lumorphiaUser({ sub: ADMIN_SUB }));
+    type Reports = { items: { id: string; postId: string; display: string }[] };
+
+    it("lists open reports with the post's image for the operator", async () => {
+      const { id } = await reported();
+      const { cookie } = await admin();
+      const list = (
+        await app.inject({ method: "GET", url: "/api/admin/reports", headers: { cookie } })
+      ).json() as Reports;
+      expect(list.items[0]).toMatchObject({
+        postId: id,
+        display: `/api/admin/posts/${id}/image/display`,
+      });
+    });
+
+    it("hides a reported post, and then restores it", async () => {
+      const { id } = await reported();
+      const { cookie } = await admin();
+      const list = (
+        await app.inject({ method: "GET", url: "/api/admin/reports", headers: { cookie } })
+      ).json() as Reports;
+      const hide = await send(cookie, `/api/admin/reports/${list.items[0]!.id}/hide`, {
+        reason: "テスト_写り込み",
+      });
+      expect(hide.statusCode).toBe(204);
+      expect((await app.inject({ method: "GET", url: `/api/posts/${id}` })).statusCode).toBe(404);
+      const hidden = (
+        await app.inject({ method: "GET", url: "/api/admin/hidden", headers: { cookie } })
+      ).json() as { items: { id: string }[] };
+      expect(hidden.items.map((p) => p.id)).toContain(id);
+      const restore = await send(cookie, `/api/admin/posts/${id}/restore`, {
+        reason: "テスト_誤り",
+      });
+      expect(restore.statusCode).toBe(204);
+      expect((await app.inject({ method: "GET", url: `/api/posts/${id}` })).statusCode).toBe(200);
+    });
+
+    it("dismisses a report and leaves the post", async () => {
+      const { id } = await reported();
+      const { cookie } = await admin();
+      const list = (
+        await app.inject({ method: "GET", url: "/api/admin/reports", headers: { cookie } })
+      ).json() as Reports;
+      const res = await send(cookie, `/api/admin/reports/${list.items[0]!.id}/dismiss`, {
+        reason: "テスト_問題なし",
+      });
+      expect(res.statusCode).toBe(204);
+      expect((await app.inject({ method: "GET", url: `/api/posts/${id}` })).statusCode).toBe(200);
+    });
+
+    it("keeps reports and the hidden posts from everyone else", async () => {
+      const { reporterCookie } = await reported();
+      for (const url of ["/api/admin/reports", "/api/admin/hidden"])
+        expect(
+          (await app.inject({ method: "GET", url, headers: { cookie: reporterCookie } }))
+            .statusCode,
+        ).toBe(404);
+    });
+  });
 });

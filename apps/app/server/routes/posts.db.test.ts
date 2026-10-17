@@ -428,6 +428,42 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
     });
   });
 
+  // 通報 (S7b-1、ADR-0021)。ログインが要る
+  describe("reporting", () => {
+    const reportPost = (cookie: string, id: string, payload: object) =>
+      app.inject({
+        method: "POST",
+        url: `/api/posts/${id}/reports`,
+        headers: mutating(cookie),
+        payload,
+      });
+
+    it("takes a report from someone logged in", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { cookie: other } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { postId } = await post(cookie);
+      await published(cookie, postId);
+      const res = await reportPost(other, postId, { reason: "terms", detail: "テスト_詳しく" });
+      expect(res.statusCode).toBe(204);
+      expect((await reportPost(other, postId, { reason: "terms" })).statusCode).toBe(409);
+    });
+
+    it("asks a visitor to log in", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { postId } = await post(cookie);
+      await published(cookie, postId);
+      expect((await reportPost("", postId, { reason: "terms" })).statusCode).toBe(401);
+    });
+
+    it("refuses a reason it does not know", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { cookie: other } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { postId } = await post(cookie);
+      await published(cookie, postId);
+      expect((await reportPost(other, postId, { reason: "test-unknown" })).statusCode).toBe(400);
+    });
+  });
+
   it("lets the owner make a post private, and hides it at once", async () => {
     const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
     const { postId } = await post(cookie);
