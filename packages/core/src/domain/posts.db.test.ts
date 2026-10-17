@@ -236,6 +236,30 @@ describe.skipIf(!databaseUrl)("posts (PostgreSQL)", () => {
       });
     });
 
+    // 投稿詳細 (S6b)。投稿者と投稿日を出す
+    it("shows who posted it", async () => {
+      const me = await user();
+      const { postId } = await createPost(deps(), me.id, { uploadId: await uploaded(me.id) });
+      expect((await getPost({ db, imageBaseUrl: IMAGE_BASE }, me.id, postId)).author).toEqual({
+        handle: me.handle,
+        name: "テスト_利用者",
+        image: null,
+      });
+    });
+
+    it("shows when it was published, and nothing before that", async () => {
+      const me = await user();
+      const { postId } = await createPost(deps(), me.id, { uploadId: await uploaded(me.id) });
+      const view = () => getPost({ db, imageBaseUrl: IMAGE_BASE }, me.id, postId);
+      expect((await view()).publishedAt).toBeNull();
+      const at = new Date(Date.UTC(2026, 9, 1, 3, 0));
+      await db
+        .update(schema.posts)
+        .set({ status: "published", width: 10, height: 10, publishedAt: at })
+        .where(eq(schema.posts.id, postId));
+      expect((await view()).publishedAt).toEqual(at);
+    });
+
     it("shows no images while they are being made", async () => {
       const me = await user();
       const { postId } = await createPost(deps(), me.id, { uploadId: await uploaded(me.id) });

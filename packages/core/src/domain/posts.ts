@@ -165,13 +165,17 @@ export function canView(
 
 async function loadViewable(db: Database, viewerId: string | null, postId: string) {
   const [row] = await db
-    .select({ post: schema.posts, authorStatus: schema.users.status })
+    .select({
+      post: schema.posts,
+      authorStatus: schema.users.status,
+      author: { handle: schema.users.handle, name: schema.users.name, image: schema.users.image },
+    })
     .from(schema.posts)
     .innerJoin(schema.users, eq(schema.users.id, schema.posts.userId))
     .where(eq(schema.posts.id, postId));
   if (!row || !canView(row.post, row.authorStatus, viewerId))
     throw new DomainError("not_found", "post not found");
-  return row.post;
+  return { post: row.post, author: row.author };
 }
 
 export type PostView = {
@@ -181,6 +185,8 @@ export type PostView = {
   isOwner: boolean;
   /** 本人にだけ見せる */
   failureReason: string | null;
+  /** 投稿者。Lumorphia の写し (ADR-0009) */
+  author: { handle: string; name: string; image: string | null };
   title: string | null;
   body: string | null;
   takenOn: string | null;
@@ -195,6 +201,8 @@ export type PostView = {
     blurhash: string | null;
   } | null;
   createdAt: Date;
+  /** 公開した日時。画像ができる前と保留の間は null */
+  publishedAt: Date | null;
 };
 
 /** 派生画像ができている (保留した投稿にも、本人に見せる画像はある。ADR-0014) */
@@ -218,7 +226,7 @@ export async function getPost(
   viewerId: string | null,
   postId: string,
 ): Promise<PostView> {
-  const post = await loadViewable(db, viewerId, postId);
+  const { post, author } = await loadViewable(db, viewerId, postId);
   const isOwner = viewerId === post.userId;
   const ready = hasImages(post) && post.width != null && post.height != null;
   return {
@@ -227,6 +235,7 @@ export async function getPost(
     visibility: post.visibility,
     isOwner,
     failureReason: isOwner ? post.failureReason : null,
+    author,
     title: post.title,
     body: post.body,
     takenOn: post.takenOn,
@@ -242,6 +251,7 @@ export async function getPost(
         }
       : null,
     createdAt: post.createdAt,
+    publishedAt: post.publishedAt,
   };
 }
 
@@ -284,7 +294,7 @@ export async function readPostImage(
   postId: string,
   variant: Variant,
 ): Promise<{ body: Uint8Array; contentType: string }> {
-  const post = await loadViewable(db, viewerId, postId);
+  const { post } = await loadViewable(db, viewerId, postId);
   const body = hasImages(post) ? await storage.get(variantKey(post.imageKeyBase, variant)) : null;
   if (!body) throw new DomainError("not_found", "image not found");
   return { body, contentType: "image/webp" };
