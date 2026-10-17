@@ -23,7 +23,7 @@ import { withErrors } from "../schemas/error.ts";
 
 const postSchema = z.object({
   id: z.string(),
-  status: z.enum(["processing", "published", "failed", "held"]),
+  status: z.enum(["processing", "published", "failed", "held", "hidden"]),
   visibility: z.enum(VISIBILITIES),
   isOwner: z.boolean(),
   failureReason: z.string().nullable(),
@@ -325,7 +325,7 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
             items: z.array(
               z.object({
                 id: z.string(),
-                status: z.enum(["processing", "published", "failed", "held"]),
+                status: z.enum(["processing", "published", "failed", "held", "hidden"]),
                 visibility: z.enum(VISIBILITIES),
                 title: z.string().nullable(),
                 thumb: z.string().nullable(),
