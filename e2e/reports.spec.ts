@@ -3,14 +3,14 @@ import { lumorphiaUser } from "@lumorphia/e2e/playwright";
 import type { Browser } from "@playwright/test";
 import { expect, test } from "./test.ts";
 import { gotoHydrated } from "./helpers.ts";
-import { E2E_ADMIN_SUB } from "./lumorphia.ts";
+import { e2eOperator } from "./lumorphia.ts";
 import { asSomeoneElse, login, post } from "./posting.ts";
 
 // 通報と運営の対応 (docs/plan.md の S7b-1、ADR-0021)
 
 async function asOperator(browser: Browser, tab: "通報" | "非表示") {
   const operator = await browser.newPage();
-  await login(operator, lumorphiaUser({ sub: E2E_ADMIN_SUB }));
+  await login(operator, e2eOperator());
   await gotoHydrated(operator, "/admin");
   await operator.getByRole("tab", { name: new RegExp(`^${tab}`) }).click();
   return operator;
