@@ -64,6 +64,13 @@
       "when": 1792228701317,
       "tag": "0008_post_moderation",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792230664028,
+      "tag": "0009_post_list_index",
+      "breakpoints": true
     }
   ]
 }

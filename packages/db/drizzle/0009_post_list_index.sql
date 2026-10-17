@@ -1,0 +1,1 @@
+CREATE INDEX "posts_public_list_idx" ON "posts" USING btree ("published_at" DESC NULLS LAST,"id" DESC NULLS LAST) WHERE "posts"."status" = 'published' and "posts"."visibility" = 'public';

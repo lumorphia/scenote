@@ -13,6 +13,7 @@ import {
 } from "@lumorphia-scenote/core/domain/posts";
 import { DomainError } from "@lumorphia-scenote/core";
 import { findBlockedText } from "@lumorphia-scenote/core/domain/blocked-text";
+import { listPublicPosts, MAX_PAGE_SIZE } from "@lumorphia-scenote/core/domain/browse";
 import { withErrors } from "../schemas/error.ts";
 
 const postSchema = z.object({
@@ -166,6 +167,45 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
     if (!z.uuid().safeParse(id).success) throw new DomainError("not_found", "post not found");
     return id;
   };
+
+  // 公開の投稿の一覧 (S6a、ADR-0016)。ログインは要らない
+  app.get(
+    "/posts",
+    {
+      schema: {
+        tags: ["posts"],
+        summary: "公開の投稿を新しい順に",
+        querystring: z.object({
+          cursor: z.string().max(500).optional(),
+          limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).optional(),
+        }),
+        response: withErrors({
+          200: z.object({
+            items: z.array(
+              z.object({
+                id: z.string(),
+                title: z.string().nullable(),
+                thumb: z.string(),
+                width: z.number(),
+                height: z.number(),
+                blurhash: z.string().nullable(),
+                author: z.object({
+                  handle: z.string(),
+                  name: z.string(),
+                  image: z.string().nullable(),
+                }),
+                tags: z.array(z.object({ name: z.string(), displayName: z.string() })),
+                publishedAt: z.date(),
+              }),
+            ),
+            nextCursor: z.string().nullable(),
+          }),
+        }),
+      },
+    },
+    async (req) =>
+      listPublicPosts({ db: app.db, imageBaseUrl: app.env.PUBLIC_IMAGE_BASE_URL }, req.query),
+  );
 
   app.get(
     "/posts/:id",
