@@ -49,6 +49,8 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
         LUMORPHIA_CLIENT_ID: CLIENT_ID,
         LUMORPHIA_CLIENT_SECRET: "test-secret",
         LOG_LEVEL: "error",
+        // 1 つのファイルで 1 分に 30 回より多く投稿するので、受け取りの枠の回数制限を外す (E2E と同じ)
+        API_RATE_LIMIT_DISABLED: "1",
       }),
       storage: new MemoryStorage({ publicBaseUrl: "/_storage" }),
       // E2E と同じ色で決める判定器 (赤一色を保留にする)
@@ -364,6 +366,65 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
 
     it("refuses a broken cursor", async () => {
       expect((await listPosts("?cursor=test-broken")).statusCode).toBe(400);
+    });
+  });
+
+  // マイページと削除 (S6d)
+  describe("my posts", () => {
+    type MyPage = { items: { id: string; visibility: string }[]; nextCursor: string | null };
+    const myPosts = (cookie: string) =>
+      app.inject({ method: "GET", url: "/api/me/posts", headers: { cookie } });
+    // 本文は無いので content-type を付けない (ブラウザの fetch と同じ)
+    const remove = (cookie: string, id: string) =>
+      app.inject({
+        method: "DELETE",
+        url: `/api/posts/${id}`,
+        headers: { cookie, origin: base().origin, host: base().host },
+      });
+
+    it("lists my posts of every visibility, only to me", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { cookie: other } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { postId: hidden } = await post(cookie, { visibility: "private" });
+      await published(cookie, hidden);
+      const { postId: open } = await post(cookie);
+      await published(cookie, open);
+      expect(((await myPosts(cookie)).json() as MyPage).items.map((i) => i.id)).toEqual([
+        open,
+        hidden,
+      ]);
+      expect(((await myPosts(other)).json() as MyPage).items).toEqual([]);
+    });
+
+    it("asks for a login to list my posts", async () => {
+      expect((await myPosts("")).statusCode).toBe(401);
+    });
+
+    it("deletes my post, and then nobody can see it or its image", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { postId } = await post(cookie);
+      const { image: made } = await published(cookie, postId);
+      expect((await remove(cookie, postId)).statusCode).toBe(204);
+      expect((await readPost(cookie, postId)).statusCode).toBe(404);
+      // 画像を消すジョブはアプリの中で走る (JOBS_INLINE)。終わるのを待つ
+      await (app.jobs as { drain?: () => Promise<void> }).drain?.();
+      const res = await app.inject({ method: "GET", url: made!.display });
+      expect(res.statusCode).toBe(404);
+    });
+
+    it("does not let someone else delete my post", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { cookie: other } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { postId } = await post(cookie);
+      await published(cookie, postId);
+      expect((await remove(other, postId)).statusCode).toBe(404);
+      expect((await readPost(cookie, postId)).statusCode).toBe(200);
+    });
+
+    it("refuses to delete without a login", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { postId } = await post(cookie);
+      expect((await remove("", postId)).statusCode).toBe(401);
     });
   });
 

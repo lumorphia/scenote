@@ -1,6 +1,7 @@
 import { and, eq, inArray, lt, or, sql, type SQL } from "drizzle-orm";
 import { schema, type Database } from "@lumorphia-scenote/db";
 import { DomainError } from "./errors.ts";
+import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { imageUrl } from "./posts.ts";
 import { normalizeTag, type TagInput } from "./tags.ts";
 
@@ -21,30 +22,6 @@ export type PostCard = {
 };
 
 export type PostPage = { items: PostCard[]; nextCursor: string | null };
-
-/** 公開日時と ID の組で、前のページの最後を指す (lumorphia/prismtone の browse と同じ形) */
-type Cursor = { publishedAt: string; id: string };
-
-function encodeCursor(cursor: Cursor): string {
-  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
-}
-
-function decodeCursor(cursor: string): Cursor {
-  let parsed: Partial<Cursor> | null = null;
-  try {
-    parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as Partial<Cursor>;
-  } catch {
-    parsed = null;
-  }
-  if (
-    !parsed ||
-    typeof parsed.publishedAt !== "string" ||
-    typeof parsed.id !== "string" ||
-    Number.isNaN(Date.parse(parsed.publishedAt))
-  )
-    throw new DomainError("validation", "invalid cursor");
-  return { publishedAt: parsed.publishedAt, id: parsed.id };
-}
 
 /**
  * 一覧に出してよい投稿。canView (posts.ts) でほかの人に見えて、しかも公開のもの (要件定義書 9.1)。
@@ -88,11 +65,10 @@ export async function listPublicPosts(
   }
   if (input.author !== undefined) conditions.push(eq(schema.users.handle, input.author));
   if (after) {
-    const publishedAt = new Date(after.publishedAt);
     conditions.push(
       or(
-        lt(schema.posts.publishedAt, publishedAt),
-        and(eq(schema.posts.publishedAt, publishedAt), lt(schema.posts.id, after.id)),
+        lt(schema.posts.publishedAt, after.at),
+        and(eq(schema.posts.publishedAt, after.at), lt(schema.posts.id, after.id)),
       ),
     );
   }
@@ -139,7 +115,7 @@ export async function listPublicPosts(
     })),
     nextCursor:
       rows.length > limit && last
-        ? encodeCursor({ publishedAt: last.publishedAt!.toISOString(), id: last.id })
+        ? encodeCursor({ at: last.publishedAt!.toISOString(), id: last.id })
         : null,
   };
 }

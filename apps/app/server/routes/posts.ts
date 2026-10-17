@@ -18,6 +18,7 @@ import {
   listPublicPosts,
   MAX_PAGE_SIZE,
 } from "@lumorphia-scenote/core/domain/browse";
+import { deletePost, listMyPosts } from "@lumorphia-scenote/core/domain/my-posts";
 import { withErrors } from "../schemas/error.ts";
 
 const postSchema = z.object({
@@ -286,6 +287,67 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
           req.body.visibility,
         );
       return reply.code(204).send(null);
+    },
+  );
+
+  // 投稿の削除 (S6d)。本人だけ。行はすぐに消え、画像は worker が消す。戻せない
+  app.delete(
+    "/posts/:id",
+    {
+      schema: {
+        tags: ["posts"],
+        summary: "自分の投稿を消す",
+        params: z.object({ id: z.string() }),
+        response: withErrors({ 204: z.null() }),
+      },
+      config: { rateLimit: { max: 30, timeWindow: "1 minute" } },
+      preValidation: [app.requireAuth],
+    },
+    async (req, reply) => {
+      await deletePost({ db: app.db, jobs: app.jobs }, req.user!.id, postId(req.params.id));
+      return reply.code(204).send(null);
+    },
+  );
+
+  // マイページ (S6d)。自分の投稿を、公開範囲も状態も問わず新しい順に
+  app.get(
+    "/me/posts",
+    {
+      schema: {
+        tags: ["posts"],
+        summary: "自分の投稿の一覧",
+        querystring: z.object({
+          cursor: z.string().max(500).optional(),
+          limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).optional(),
+        }),
+        response: withErrors({
+          200: z.object({
+            items: z.array(
+              z.object({
+                id: z.string(),
+                status: z.enum(["processing", "published", "failed", "held"]),
+                visibility: z.enum(VISIBILITIES),
+                title: z.string().nullable(),
+                thumb: z.string().nullable(),
+                width: z.number().nullable(),
+                height: z.number().nullable(),
+                createdAt: z.date(),
+              }),
+            ),
+            nextCursor: z.string().nullable(),
+          }),
+        }),
+      },
+      preValidation: [app.requireAuth],
+    },
+    async (req, reply) => {
+      // 本人の一覧 (非公開を含む) を共有のキャッシュに載せない
+      reply.header("cache-control", "private, no-store");
+      return listMyPosts(
+        { db: app.db, imageBaseUrl: app.env.PUBLIC_IMAGE_BASE_URL },
+        req.user!.id,
+        req.query,
+      );
     },
   );
 
