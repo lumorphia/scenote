@@ -1,4 +1,9 @@
-/** 投稿の送信 (ADR-0011)。受け取りの枠をもらい、画像を署名付き URL に PUT し、投稿を作る */
+import { blockedFieldMessage, blockedFieldOf, type BlockedField } from "./blocked.ts";
+
+/**
+ * 投稿の送信 (ADR-0011)。書いた語を確かめ (ADR-0015)、受け取りの枠をもらい、画像を署名付き URL に PUT し、投稿を作る。
+ * 語を先に確かめるのは、NG 語で断られたときに受け取りの枠を無駄にしないため
+ */
 export type SubmitInput = {
   image: Blob;
   title: string;
@@ -13,13 +18,16 @@ export type SubmitInput = {
 };
 
 export class SubmitError extends Error {
-  readonly step: "upload" | "put" | "post";
+  readonly step: "check" | "upload" | "put" | "post";
   readonly status: number;
-  constructor(step: SubmitError["step"], status: number) {
+  /** NG 語に当たった欄 */
+  readonly blocked: BlockedField | null;
+  constructor(step: SubmitError["step"], status: number, blocked: BlockedField | null = null) {
     super(`${step} failed: ${status}`);
     this.name = "SubmitError";
     this.step = step;
     this.status = status;
+    this.blocked = blocked;
   }
 }
 
@@ -33,6 +41,21 @@ export async function submitPost(
   fetchImpl: typeof fetch = fetch,
 ): Promise<string> {
   const json = { "content-type": "application/json" };
+  const checked = await fetchImpl("/api/posts/check-text", {
+    method: "POST",
+    headers: json,
+    credentials: "same-origin",
+    body: JSON.stringify({
+      title: input.title,
+      body: input.body,
+      tags: input.tags,
+      placeText: input.placeText.trim(),
+    }),
+  });
+  if (!checked.ok) throw new SubmitError("check", checked.status);
+  const { blocked } = (await checked.json()) as { blocked: BlockedField | null };
+  if (blocked) throw new SubmitError("check", 400, blocked);
+
   const granted = await fetchImpl("/api/uploads", {
     method: "POST",
     headers: json,
@@ -65,13 +88,19 @@ export async function submitPost(
       placeText: input.placeText.trim() || null,
     }),
   });
-  if (!created.ok) throw new SubmitError("post", created.status);
+  if (!created.ok)
+    throw new SubmitError(
+      "post",
+      created.status,
+      blockedFieldOf(await created.json().catch(() => null)),
+    );
   return ((await created.json()) as { postId: string }).postId;
 }
 
 /** 送れなかったときの文言 */
 export function submitErrorMessage(error: unknown): string {
   if (error instanceof SubmitError) {
+    if (error.blocked) return blockedFieldMessage(error.blocked);
     if (error.status === 401)
       return "ログインが切れました。ログインしてから、もう一度投稿してください。";
     if (error.status === 429)

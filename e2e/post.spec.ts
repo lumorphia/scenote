@@ -1,5 +1,6 @@
 import type { Browser, Page } from "@playwright/test";
 import { approveLumorphia, lumorphiaUser, type MockLumorphiaUser } from "@lumorphia/e2e/playwright";
+import { BLOCKED_TERMS } from "@lumorphia/moderation/text";
 import { expect, test } from "./test.ts";
 import { gotoHydrated, openEditorWithImage } from "./helpers.ts";
 import { LUMORPHIA } from "./lumorphia.ts";
@@ -203,4 +204,27 @@ test("a photo the moderation holds is shown only to its owner, with a notice", a
   } finally {
     await other.close();
   }
+});
+
+// NG 語 (docs/plan.md の S5g、ADR-0015)。語はリポジトリに書かず、パッケージの一覧から取る
+const blockedWord = `テスト${BLOCKED_TERMS.find((t) => t.match === "contains")!.term}`;
+
+test("a title with a blocked word is refused before the photo is sent", async ({ page }) => {
+  await login(page, lumorphiaUser());
+  await sendToPostForm(page);
+  await page.getByLabel("タイトル (任意)").fill(blockedWord);
+  await page.getByRole("button", { name: "投稿する" }).click();
+  await expect(page.getByText("タイトルに使えない語が含まれています")).toBeVisible();
+  await expect(page).toHaveURL(/\/post\/new$/);
+});
+
+test("the owner cannot change the tags to a blocked word", async ({ page }) => {
+  await login(page, lumorphiaUser());
+  await post(page);
+  const tag = page.getByRole("textbox", { name: /タグ/ });
+  await tag.fill(blockedWord);
+  await tag.press("Enter");
+  await page.getByRole("button", { name: "タグを保存する" }).click();
+  await expect(page.getByText("タグに使えない語が含まれています")).toBeVisible();
+  await expect(page.getByTestId("post-tags")).toHaveCount(0);
 });

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { visibilityLabel, type Visibility } from "../features/post-form/visibility.ts";
+import { blockedFieldMessage, blockedFieldOf } from "../features/post-form/blocked.ts";
 import { VisibilityField } from "../features/post-form/VisibilityField.tsx";
 import { TagsField } from "../features/post-form/TagsField.tsx";
 import {
@@ -194,6 +195,14 @@ function VisibilityEditor({
   );
 }
 
+/** 保存できなかったときの文言。NG 語に当たったら、その欄を案内する (ADR-0015) */
+async function saveFailedMessage(res: Response | null, what: string): Promise<string> {
+  const blocked = res?.status === 400 ? blockedFieldOf(await res.json().catch(() => null)) : null;
+  return blocked
+    ? blockedFieldMessage(blocked)
+    : `${what}を保存できませんでした。もう一度お試しください。`;
+}
+
 /** 本人だけ。タグを付け直す */
 function TagsEditor({
   postId,
@@ -229,7 +238,7 @@ function TagsEditor({
     if (reread) {
       onSaved(reread.tags);
       setMessage("タグを保存しました。");
-    } else setMessage("タグを保存できませんでした。もう一度お試しください。");
+    } else setMessage(await saveFailedMessage(res, "タグ"));
   }
 
   return (
@@ -307,7 +316,7 @@ function PlaceEditor({
     if (reread) {
       onSaved(reread.place);
       setMessage("撮影場所を保存しました。");
-    } else setMessage("撮影場所を保存できませんでした。もう一度お試しください。");
+    } else setMessage(await saveFailedMessage(res, "撮影場所"));
   }
 
   if (!regions) return null;

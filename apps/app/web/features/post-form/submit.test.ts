@@ -3,8 +3,8 @@ import { submitPost, submitErrorMessage, SubmitError } from "./submit.ts";
 
 type Call = { url: string; method: string; body: unknown; headers: Record<string, string> };
 
-/** 受け取りの枠・PUT・投稿の 3 つに答える偽の fetch */
-function fakeFetch(answers: Partial<Record<"uploads" | "put" | "posts", Response>> = {}) {
+/** 語の確かめ・受け取りの枠・PUT・投稿の 4 つに答える偽の fetch */
+function fakeFetch(answers: Partial<Record<"check" | "uploads" | "put" | "posts", Response>> = {}) {
   const calls: Call[] = [];
   const impl = async (input: string, init: RequestInit = {}) => {
     const call = {
@@ -14,6 +14,7 @@ function fakeFetch(answers: Partial<Record<"uploads" | "put" | "posts", Response
       headers: (init.headers ?? {}) as Record<string, string>,
     };
     calls.push(call);
+    if (input === "/api/posts/check-text") return answers.check ?? Response.json({ blocked: null });
     if (input === "/api/uploads")
       return (
         answers.uploads ??
@@ -51,10 +52,11 @@ const fields = {
 };
 
 describe("submitPost", () => {
-  it("asks for a place, puts the image there, then posts it", async () => {
+  it("checks the words, asks for a place, puts the image there, then posts it", async () => {
     const { calls, impl } = fakeFetch();
     expect(await submitPost({ image, ...fields }, impl)).toBe("test-post");
     expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual([
+      "POST /api/posts/check-text",
       "POST /api/uploads",
       "PUT /_storage/tmp/test-upload",
       "POST /api/posts",
@@ -64,20 +66,20 @@ describe("submitPost", () => {
   it("declares the image's type and size", async () => {
     const { calls, impl } = fakeFetch();
     await submitPost({ image, ...fields }, impl);
-    expect(JSON.parse(calls[0]!.body as string)).toEqual({ mime: "image/webp", bytes: 3 });
+    expect(JSON.parse(calls[1]!.body as string)).toEqual({ mime: "image/webp", bytes: 3 });
   });
 
   it("puts the image with the headers it was given", async () => {
     const { calls, impl } = fakeFetch();
     await submitPost({ image, ...fields }, impl);
-    expect(calls[1]!.headers).toEqual({ "content-type": "image/webp" });
-    expect(calls[1]!.body).toBe(image);
+    expect(calls[2]!.headers).toEqual({ "content-type": "image/webp" });
+    expect(calls[2]!.body).toBe(image);
   });
 
   it("sends what the user wrote with the upload", async () => {
     const { calls, impl } = fakeFetch();
     await submitPost({ image, ...fields }, impl);
-    expect(JSON.parse(calls[2]!.body as string)).toEqual({
+    expect(JSON.parse(calls[3]!.body as string)).toEqual({
       uploadId: "test-upload",
       title: "テスト_題",
       body: null,
@@ -98,7 +100,56 @@ describe("submitPost", () => {
       step: "upload",
       status: 400,
     });
+    expect(calls).toHaveLength(2);
+  });
+
+  // NG 語 (ADR-0015)。画像を送る前に確かめ、受け取りの枠を使わない
+  it("sends the words it checks", async () => {
+    const { calls, impl } = fakeFetch();
+    await submitPost({ image, ...fields }, impl);
+    expect(JSON.parse(calls[0]!.body as string)).toEqual({
+      title: "テスト_題",
+      body: "",
+      tags: ["夕焼け"],
+      placeText: "テスト_ゴールドソーサー",
+    });
+  });
+
+  it("stops before sending the image when a word is blocked", async () => {
+    const { calls, impl } = fakeFetch({ check: Response.json({ blocked: "tags" }) });
+    await expect(submitPost({ image, ...fields }, impl)).rejects.toMatchObject({
+      step: "check",
+      blocked: "tags",
+    });
     expect(calls).toHaveLength(1);
+  });
+
+  it("stops when the words could not be checked", async () => {
+    const { calls, impl } = fakeFetch({ check: new Response(null, { status: 401 }) });
+    await expect(submitPost({ image, ...fields }, impl)).rejects.toMatchObject({
+      step: "check",
+      status: 401,
+    });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("names the field when the post itself is refused for a blocked word", async () => {
+    const { impl } = fakeFetch({
+      posts: Response.json(
+        {
+          error: {
+            code: "validation",
+            message: "x",
+            issues: [{ path: "placeText", message: "x" }],
+          },
+        },
+        { status: 400 },
+      ),
+    });
+    await expect(submitPost({ image, ...fields }, impl)).rejects.toMatchObject({
+      step: "post",
+      blocked: "placeText",
+    });
   });
 
   it("stops when the image could not be put", async () => {
@@ -118,6 +169,12 @@ describe("submitErrorMessage", () => {
 
   it("explains a refused image or field", () => {
     expect(submitErrorMessage(new SubmitError("post", 400))).toMatch(/投稿できませんでした/);
+  });
+
+  it("names the field that has a blocked word", () => {
+    expect(submitErrorMessage(new SubmitError("check", 400, "title"))).toMatch(
+      /タイトルに使えない語/,
+    );
   });
 
   it("falls back to a general message", () => {

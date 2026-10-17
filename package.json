@@ -28,6 +28,7 @@
   "devDependencies": {
     "@lumorphia-scenote/db": "workspace:*",
     "@lumorphia/e2e": "1.0.0",
+    "@lumorphia/moderation": "1.0.0",
     "@playwright/test": "^1.63.0",
     "@types/node": "^24.19.1",
     "@vitest/coverage-v8": "^5.0.3",
