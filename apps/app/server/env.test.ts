@@ -87,3 +87,25 @@ describe("lumorphiaConfig", () => {
     });
   });
 });
+
+// 管理画面の許可リスト (S7a、ADR-0019)。lumorphia/accounts の ADR-0015 と同じ形
+describe("loadEnv for the admin", () => {
+  const sub = "0199f1d2-3c4b-7a5e-9f00-123456789abc";
+  const other = "0199f1d2-3c4b-7a5e-9f00-cba987654321";
+
+  it("lets nobody in when the list is missing", () => {
+    expect(loadEnv(base).ADMIN_SUBS).toEqual([]);
+  });
+
+  it("lets nobody in when the list is empty in an env file", () => {
+    expect(loadEnv({ ...base, ADMIN_SUBS: "" }).ADMIN_SUBS).toEqual([]);
+  });
+
+  it("reads the Lumorphia subs separated by commas", () => {
+    expect(loadEnv({ ...base, ADMIN_SUBS: ` ${sub}, ${other} ` }).ADMIN_SUBS).toEqual([sub, other]);
+  });
+
+  it("refuses to start with a value that is not a sub", () => {
+    expect(() => loadEnv({ ...base, ADMIN_SUBS: `${sub},test-admin` })).toThrow(/ADMIN_SUBS/);
+  });
+});

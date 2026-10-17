@@ -16,6 +16,7 @@ import { authPlugin } from "./plugins/auth.ts";
 import { storagePlugin } from "./plugins/storage.ts";
 import { devStoragePlugin } from "./plugins/dev-storage.ts";
 import { jobsPlugin } from "./plugins/jobs.ts";
+import { adminRoutes } from "./routes/admin.ts";
 import { postRoutes } from "./routes/posts.ts";
 import type { ObjectStorage } from "@lumorphia/storage";
 import type { JobQueue } from "@lumorphia-scenote/core/jobs";
@@ -123,6 +124,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
         await api.register(meRoutes);
         await api.register(lumorphiaRoutes);
         await api.register(postRoutes);
+        await api.register(adminRoutes);
       }
       // /api 配下の未知のパスは React Router の catch-all (/*) ではなく JSON の 404 を返す
       api.all("/*", { schema: { hide: true } }, async (req, reply) => {

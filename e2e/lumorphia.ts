@@ -9,3 +9,6 @@ export const LUMORPHIA: MockIssuerLocation = {
   controlUrl: "http://127.0.0.1:3455",
 };
 export const LUMORPHIA_CLIENT_ID = "e2e-scenote";
+
+/** E2E の運営者 (管理画面の許可リスト ADMIN_SUBS に入れる Lumorphia の sub。ADR-0019) */
+export const E2E_ADMIN_SUB = "0199f1d2-3c4b-7a5e-9f00-00000000e2e0";
