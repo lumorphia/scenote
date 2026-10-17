@@ -63,6 +63,20 @@ const envSchema = z.object({
     .enum(["0", "1", "true", "false"])
     .default("0")
     .transform((v) => v === "1" || v === "true"),
+  /**
+   * 管理画面に入れる運営者の Lumorphia の sub (カンマ区切りの UUID。ADR-0019)。無いか空なら管理画面は閉じる。
+   * UUID でない値があれば起動しない (lumorphia/accounts の ADR-0015 と同じ)
+   */
+  ADMIN_SUBS: z
+    .string()
+    .default("")
+    .transform((v) =>
+      v
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    )
+    .pipe(z.array(z.uuid({ message: "ADMIN_SUBS must be Lumorphia subs (UUID)" }))),
   /** CSP を強制せず Report-Only で違反だけ集める (本番の最初の 1 週間用) */
   CSP_REPORT_ONLY: z
     .string()

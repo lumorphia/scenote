@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { defineConfig } from "@playwright/test";
 import { certificateSpki, ensureE2eTls } from "@lumorphia/e2e/tls";
 import { DEFAULT_DATABASE_URL, e2eDatabaseUrl } from "./e2e/database.ts";
-import { LUMORPHIA, LUMORPHIA_CLIENT_ID } from "./e2e/lumorphia.ts";
+import { E2E_ADMIN_SUB, LUMORPHIA, LUMORPHIA_CLIENT_ID } from "./e2e/lumorphia.ts";
 
 const PORT = Number(process.env.E2E_PORT ?? 3445);
 const HOST = "scenote.lumorphia.test";
@@ -83,6 +83,7 @@ export default defineConfig({
         JOBS_INLINE: "1",
         // 画像の判定は色で決める偽物 (@lumorphia/moderation の fake)。本物のモデルは使わない
         IMAGE_MODERATION: "fake",
+        ADMIN_SUBS: E2E_ADMIN_SUB,
         AUTH_SECRET: "test-e2e-secret-test-e2e-secret-1234",
         AUTH_BASE_URL: `https://${HOST}:${PORT}`,
         LUMORPHIA_ISSUER: LUMORPHIA.issuer,

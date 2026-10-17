@@ -1,6 +1,7 @@
 import fp from "fastify-plugin";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { DomainError } from "@lumorphia-scenote/core";
+import { isAdmin } from "@lumorphia-scenote/core/domain/admin";
 import {
   createAuth,
   runAuthRequest,
@@ -16,6 +17,8 @@ declare module "fastify" {
     requireAuth: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
     /** req.user を埋めるだけ */
     optionalAuth: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    /** 管理画面 (ADR-0019)。許可リストの運営者でなければ、ログインの有無によらず 404 (管理画面があることを見せない) */
+    requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
   interface FastifyRequest {
     user: SessionUser | null;
@@ -81,6 +84,13 @@ export const authPlugin = fp(
     app.decorate("requireAuth", async (req: FastifyRequest) => {
       await load(req);
       if (!req.user) throw new DomainError("unauthorized", "login required");
+    });
+    app.decorate("requireAdmin", async (req: FastifyRequest, reply: FastifyReply) => {
+      await load(req);
+      // 本人のための応答なので、共有のキャッシュにも、ブラウザの保存にも載せない
+      reply.header("cache-control", "private, no-store");
+      if (!(await isAdmin(app.db, req.user?.id ?? null, app.env.ADMIN_SUBS)))
+        throw new DomainError("not_found", "not found");
     });
   },
   { name: "auth", dependencies: ["db", "jobs"] },
