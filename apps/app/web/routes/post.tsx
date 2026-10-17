@@ -12,10 +12,22 @@ import {
 import { formatDate, formatTakenOn } from "../lib/format-date.ts";
 import { CopyUrlButton } from "../features/post-detail/CopyUrlButton.tsx";
 import { DeletePost } from "../features/post-detail/DeletePost.tsx";
+import { postMeta } from "../lib/ogp.ts";
+import { serverReadsContext } from "../lib/server-context.ts";
 import type { Route } from "./+types/post";
 
-export function meta(_: Route.MetaArgs) {
-  return [{ title: "投稿 - Scenote" }, { name: "robots", content: "noindex" }];
+/** OGP は SSR で出す。共有できる投稿だけ、サーバーの中で読む (S6e、ADR-0018) */
+export async function loader({ params, context }: Route.LoaderArgs) {
+  const reads = context.get(serverReadsContext);
+  if (!reads || !params.id) return { share: null, url: null };
+  return {
+    share: await reads.postShare(params.id),
+    url: `${reads.siteUrl}/posts/${encodeURIComponent(params.id)}`,
+  };
+}
+
+export function meta({ loaderData }: Route.MetaArgs) {
+  return postMeta(loaderData?.share ?? null, loaderData?.url ?? "");
 }
 
 type OwnPost = {
