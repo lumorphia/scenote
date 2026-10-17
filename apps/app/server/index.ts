@@ -2,6 +2,7 @@ import { pathToFileURL } from "node:url";
 import { fastifyReactRouter } from "@mcansh/react-router-fastify";
 import type { ViteDevServer } from "vite";
 import { buildApp } from "./app.ts";
+import { createLoadContext } from "./load-context.ts";
 import { handleShutdownSignals } from "./graceful-shutdown.ts";
 
 /**
@@ -16,6 +17,8 @@ export async function createServer(vite?: ViteDevServer) {
     assetCacheControl: "public, max-age=31536000, immutable",
     // catch-all を OpenAPI に載せない
     routeOptions: { schema: { hide: true } },
+    // SSR の loader に、サーバーの中の読み出しを渡す (投稿の OGP。ADR-0018)
+    getLoadContext: () => createLoadContext(app),
   });
 
   return app;
