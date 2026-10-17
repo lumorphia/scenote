@@ -244,6 +244,9 @@ importers:
       '@lumorphia/editor-recipe':
         specifier: 1.0.0
         version: 1.0.0
+      '@lumorphia/legal':
+        specifier: 1.0.0
+        version: 1.0.0
       '@lumorphia/moderation':
         specifier: 1.0.0
         version: 1.0.0(@types/node@24.19.2)
@@ -1387,6 +1390,9 @@ packages:
 
   '@lumorphia/editor-recipe@1.0.0':
     resolution: {integrity: sha512-of+VJ7G4rahkMPIxICzebCJ/k3ON7e1G3zjq8GxDHxjBFKMWn4WntW/fNTkuRiyRCsfHda/Aps04bSbt6uB78Q==, tarball: https://npm.pkg.github.com/download/@lumorphia/editor-recipe/1.0.0/d46867dd4c5166a0505e1618fd69c46a948ab5ef}
+
+  '@lumorphia/legal@1.0.0':
+    resolution: {integrity: sha512-QIMQ7LaagLHzmvxXsl5L1I5aLcSBYgHuwRDh0DBETCoz/U6OubLbG2Y3nIJ3NcE0KS7n4HAtNusYLfxaDi5Xvg==, tarball: https://npm.pkg.github.com/download/@lumorphia/legal/1.0.0/fba6fa27f885d17339a1e6b684fd97496cc558b0}
 
   '@lumorphia/media@1.1.0':
     resolution: {integrity: sha512-ifUSajXpZwmRgqXmRdMHREqpLBQjjNVbp9RYd9SIPsyfK+l9scnI0yKECvwXX73775rkp9bLdS0asO5fFWwzcg==, tarball: https://npm.pkg.github.com/download/@lumorphia/media/1.1.0/404b385755926b3ff3366a7b5dfdbb6b7ea4d71d}
@@ -2840,6 +2846,11 @@ packages:
 
   magicast@0.5.5:
     resolution: {integrity: sha512-UicdXN8zQ3JHlxVq+28afMXPr1z7WNY6+7EJnzTdQWkTAlMLF5fNCCKxJHBQwGaNGR11581EiQmQzx73+MvszA==}
+
+  marked@18.1.1:
+    resolution: {integrity: sha512-zEGgrtUG8crk+TrMacJSVABU4DYDDkS8uqgU3ohrn/2fW9C2AEfUrO3m6IhpIpQpl7YcVpiXXC9cSMWDANT3dg==}
+    engines: {node: '>= 20'}
+    hasBin: true
 
   matcher@3.0.0:
     resolution: {integrity: sha512-OkeDaAZ/bQCxeFAozM55PKcKU0yJMPGifLwV4Qgjitu+5MoAfSQN4lsLJeXZ1b8w0x+/Emda6MZgXS1jvsapng==}
@@ -4356,6 +4367,10 @@ snapshots:
     dependencies:
       zod: 4.6.5
 
+  '@lumorphia/legal@1.0.0':
+    dependencies:
+      marked: 18.1.1
+
   '@lumorphia/media@1.1.0(@types/node@24.19.2)':
     dependencies:
       blurhash: 2.0.5
@@ -5658,6 +5673,8 @@ snapshots:
       '@babel/parser': 7.29.9
       '@babel/types': 7.29.8
       source-map-js: 1.2.2
+
+  marked@18.1.1: {}
 
   matcher@3.0.0:
     dependencies:

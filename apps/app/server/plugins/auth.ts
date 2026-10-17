@@ -2,6 +2,8 @@ import fp from "fastify-plugin";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { DomainError } from "@lumorphia-scenote/core";
 import { isAdmin } from "@lumorphia-scenote/core/domain/admin";
+import { consentOf } from "@lumorphia-scenote/core/domain/consent";
+import { needsConsent } from "../legal.ts";
 import {
   createAuth,
   runAuthRequest,
@@ -17,6 +19,8 @@ declare module "fastify" {
     requireAuth: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
     /** req.user を埋めるだけ */
     optionalAuth: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    /** 投稿などの操作の前。未ログインは 401、今の版の規約に同意していなければ 403 (ADR-0023) */
+    requireConsent: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
     /** 管理画面 (ADR-0019)。許可リストの運営者でなければ、ログインの有無によらず 404 (管理画面があることを見せない) */
     requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
@@ -84,6 +88,12 @@ export const authPlugin = fp(
     app.decorate("requireAuth", async (req: FastifyRequest) => {
       await load(req);
       if (!req.user) throw new DomainError("unauthorized", "login required");
+    });
+    app.decorate("requireConsent", async (req: FastifyRequest) => {
+      await load(req);
+      if (!req.user) throw new DomainError("unauthorized", "login required");
+      if (needsConsent(await consentOf(app.db, req.user.id)))
+        throw new DomainError("forbidden", "terms consent required");
     });
     app.decorate("requireAdmin", async (req: FastifyRequest, reply: FastifyReply) => {
       await load(req);
