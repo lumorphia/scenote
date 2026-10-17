@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { MemoryStorage } from "@lumorphia/storage";
@@ -8,6 +9,7 @@ import { lumorphiaUser } from "@lumorphia/e2e/playwright";
 import { buildApp } from "../app.ts";
 import { loadEnv } from "../env.ts";
 import { loginWithLumorphia } from "../test/lumorphia-login.ts";
+import { newImageKeyBase, variantKey } from "@lumorphia-scenote/core/storage-keys";
 
 const url = process.env.DATABASE_URL;
 const CLIENT_ID = "test-scenote";
@@ -17,6 +19,7 @@ const ADMIN_SUB = randomUUID();
 describe.skipIf(!url)("the admin API (PostgreSQL)", () => {
   let app: FastifyInstance;
   let mock: MockIssuer;
+  const storage = new MemoryStorage({ publicBaseUrl: "/_storage" });
 
   beforeAll(async () => {
     mock = await startMockIssuer({
@@ -38,7 +41,7 @@ describe.skipIf(!url)("the admin API (PostgreSQL)", () => {
         LOG_LEVEL: "error",
         ADMIN_SUBS: ADMIN_SUB,
       }),
-      storage: new MemoryStorage({ publicBaseUrl: "/_storage" }),
+      storage,
     });
   });
   afterAll(async () => {
@@ -66,5 +69,102 @@ describe.skipIf(!url)("the admin API (PostgreSQL)", () => {
 
   it("answers 404 to a visitor", async () => {
     expect((await me("")).statusCode).toBe(404);
+  });
+  // 保留・要確認の投稿の確認 (S7a-2、ADR-0020)
+  describe("reviewing", () => {
+    const base = () => new URL(app.env.AUTH_BASE_URL);
+    /** 保留した投稿を、派生画像ができたところまで直接置く */
+    async function heldPost() {
+      const user = lumorphiaUser();
+      const { cookie } = await loginWithLumorphia(app, mock, user);
+      const owner = await app.db.query.users.findFirst({
+        where: eq(schema.users.lumorphiaSub, user.sub),
+      });
+      const id = randomUUID();
+      const imageKeyBase = newImageKeyBase(id, "private");
+      await app.db.insert(schema.posts).values({
+        id,
+        userId: owner!.id,
+        status: "held",
+        visibility: "public",
+        imageKeyBase,
+        width: 1600,
+        height: 900,
+        moderationState: "held",
+      });
+      await storage.put({
+        key: variantKey(imageKeyBase, "display"),
+        body: new Uint8Array([4]),
+        contentType: "image/webp",
+      });
+      return { id, ownerCookie: cookie };
+    }
+    const admin = () => loginWithLumorphia(app, mock, lumorphiaUser({ sub: ADMIN_SUB }));
+    const decide = (cookie: string, id: string, payload: object) =>
+      app.inject({
+        method: "POST",
+        url: `/api/admin/posts/${id}/review`,
+        headers: {
+          cookie,
+          origin: base().origin,
+          host: base().host,
+          "content-type": "application/json",
+        },
+        payload,
+      });
+
+    it("lists the waiting posts with an image the operator can open", async () => {
+      const { id } = await heldPost();
+      const { cookie } = await admin();
+      const list = await app.inject({
+        method: "GET",
+        url: "/api/admin/reviews",
+        headers: { cookie },
+      });
+      const item = (list.json() as { items: { id: string; display: string }[] }).items[0]!;
+      expect(item).toMatchObject({ id, display: `/api/admin/posts/${id}/image/display` });
+      const image = await app.inject({ method: "GET", url: item.display, headers: { cookie } });
+      expect(image.statusCode).toBe(200);
+      expect(image.headers["cache-control"]).toBe("private, no-store");
+    });
+
+    it("publishes a held post the operator approves", async () => {
+      const { id } = await heldPost();
+      const { cookie } = await admin();
+      const res = await decide(cookie, id, { decision: "approve", reason: "テスト_問題なし" });
+      expect(res.statusCode).toBe(204);
+      expect((await app.inject({ method: "GET", url: `/api/posts/${id}` })).statusCode).toBe(200);
+    });
+
+    it("asks for a reason", async () => {
+      const { id } = await heldPost();
+      const { cookie } = await admin();
+      expect((await decide(cookie, id, { decision: "approve", reason: "" })).statusCode).toBe(400);
+    });
+
+    it("keeps the queue, the images and the decisions from everyone else", async () => {
+      const { id, ownerCookie } = await heldPost();
+      expect(
+        (
+          await app.inject({
+            method: "GET",
+            url: "/api/admin/reviews",
+            headers: { cookie: ownerCookie },
+          })
+        ).statusCode,
+      ).toBe(404);
+      expect(
+        (
+          await app.inject({
+            method: "GET",
+            url: `/api/admin/posts/${id}/image/display`,
+            headers: { cookie: ownerCookie },
+          })
+        ).statusCode,
+      ).toBe(404);
+      expect(
+        (await decide(ownerCookie, id, { decision: "approve", reason: "テスト" })).statusCode,
+      ).toBe(404);
+    });
   });
 });
