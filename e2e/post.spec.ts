@@ -13,8 +13,8 @@ async function login(page: Page, user: MockLumorphiaUser) {
   await expect(page.getByTestId("signed-in-user")).toContainText(`@${user.handle}`);
 }
 
-async function sendToPostForm(page: Page) {
-  await openEditorWithImage(page);
+async function sendToPostForm(page: Page, colors?: readonly string[]) {
+  await openEditorWithImage(page, colors);
   await page.getByRole("button", { name: "Scenoteへ投稿" }).click();
   await expect(page).toHaveURL(/\/post\/new$/);
   await expect(page.getByTestId("post-preview")).toBeVisible();
@@ -185,4 +185,22 @@ test("the owner can change the shooting place", async ({ page }) => {
     .selectOption({ label: "グリダニア：新市街" });
   await page.getByRole("button", { name: "撮影場所を保存する" }).click();
   await expect(page.getByTestId("post-place")).toHaveText("撮影場所 黒衣森 / グリダニア：新市街");
+});
+
+// 自動モデレーション (docs/plan.md の S5f、ADR-0014)。E2E の判定器は色で決める (赤一色を保留にする)
+test("a photo the moderation holds is shown only to its owner, with a notice", async ({
+  page,
+  browser,
+}) => {
+  await login(page, lumorphiaUser());
+  await sendToPostForm(page, ["rgb(255,0,0)"]);
+  await page.getByRole("button", { name: "投稿する" }).click();
+  await expect(page.getByTestId("post-held")).toBeVisible();
+  await expect(page.getByTestId("post-image")).toHaveJSProperty("complete", true);
+  const other = await asSomeoneElse(browser, page.url());
+  try {
+    await expect(other.getByText("投稿が見つかりません")).toBeVisible();
+  } finally {
+    await other.close();
+  }
 });
