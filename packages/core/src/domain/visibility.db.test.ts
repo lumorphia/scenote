@@ -237,6 +237,23 @@ describe.skipIf(!databaseUrl)("post visibility (PostgreSQL)", () => {
       expect(await storage.get(variantKey(target, "display"))).toEqual(new Uint8Array([7]));
     });
 
+    it("moves the sharing image too, as a JPEG", async () => {
+      const me = await user();
+      const post = await published(me.id, "unlisted");
+      await storage.put({
+        key: variantKey(post.imageKeyBase, "ogp"),
+        body: new Uint8Array([8]),
+        contentType: "image/jpeg",
+      });
+      await changeVisibility({ db, jobs }, me.id, post.id, "public");
+      const target = (await reload(post.id))!.pendingImageKeyBase!;
+      await move(post.id);
+      expect(await storage.head(variantKey(target, "ogp"))).toMatchObject({
+        contentType: "image/jpeg",
+      });
+      expect(await storage.get(variantKey(post.imageKeyBase, "ogp"))).toBeNull();
+    });
+
     it("keeps private images out of shared caches", async () => {
       const me = await user();
       const post = await published(me.id, "public");

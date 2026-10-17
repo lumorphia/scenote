@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { schema } from "@lumorphia-scenote/db";
-import { imageCacheControl, VARIANTS, variantKey } from "../storage-keys.ts";
+import { imageCacheControl, variantContentType, VARIANTS, variantKey } from "../storage-keys.ts";
 import type { JobContext, JobDefinition } from "./context.ts";
 
 export type ImageMoveData = { postId: string };
@@ -35,7 +35,7 @@ async function moveOnce(postId: string, { db, storage, log }: JobContext): Promi
     await storage.put({
       key: variantKey(to, variant),
       body,
-      contentType: "image/webp",
+      contentType: variantContentType(variant),
       cacheControl: imageCacheControl(to),
     });
   }
