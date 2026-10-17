@@ -3,7 +3,7 @@ import { lumorphiaUser } from "@lumorphia/e2e/playwright";
 import type { Browser, Page } from "@playwright/test";
 import { expect, test } from "./test.ts";
 import { gotoHydrated } from "./helpers.ts";
-import { E2E_ADMIN_SUB } from "./lumorphia.ts";
+import { e2eOperator } from "./lumorphia.ts";
 import { asSomeoneElse, login, sendToPostForm } from "./posting.ts";
 
 // 保留・要確認の投稿の確認 (docs/plan.md の S7a-2、ADR-0020)。E2E の判定器は赤一色を保留にする
@@ -19,7 +19,7 @@ async function postHeld(page: Page, title: string) {
 /** 運営としてログインし、確認待ちの中の title の投稿を開く */
 async function asOperator(browser: Browser, title: string) {
   const operator = await browser.newPage();
-  await login(operator, lumorphiaUser({ sub: E2E_ADMIN_SUB }));
+  await login(operator, e2eOperator());
   await gotoHydrated(operator, "/admin");
   const item = operator.getByRole("article").filter({ hasText: title });
   await expect(item).toBeVisible();
