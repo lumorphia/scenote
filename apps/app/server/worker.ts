@@ -7,6 +7,7 @@ import { HttpPlaceSource } from "@lumorphia-scenote/core/adapters/xivapi-places"
 import { createLogger } from "@lumorphia/ops/logger";
 import { handleShutdownSignals } from "./graceful-shutdown.ts";
 import { storageConfig } from "./storage-config.ts";
+import { moderationConfig } from "./moderation-config.ts";
 
 const workerEnv = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
@@ -20,7 +21,7 @@ export const XIVAPI_USER_AGENT = "lumorphia-scenote (+https://scenote.lumorphia.
 
 /**
  * ジョブを走らせる worker (派生画像、画像の移動と削除、受け取りの掃除、撮影場所の候補の同期)。アプリは投入だけ (lumorphia/accounts と同じ)。
- * 画像の置き場所はアプリと同じ設定を読む (storage-config.ts)
+ * 画像の置き場所はアプリと同じ設定を読む (storage-config.ts)。画像の判定器は moderation-config.ts
  */
 export async function createWorker(source: NodeJS.ProcessEnv = process.env) {
   const parsed = workerEnv.safeParse(source);
@@ -29,6 +30,7 @@ export async function createWorker(source: NodeJS.ProcessEnv = process.env) {
       `invalid environment: ${parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ")}`,
     );
   const env = parsed.data;
+  const moderation = moderationConfig(source);
   const log = createLogger("worker", { level: env.LOG_LEVEL });
   const { db, close } = createDatabase(env.DATABASE_URL, {
     onIdleError: (err) => log.error({ err }, "worker database error"),
@@ -40,6 +42,7 @@ export async function createWorker(source: NodeJS.ProcessEnv = process.env) {
       storage: createStorage(storageConfig(source)),
       log,
       jobs: defaultJobs({
+        moderation,
         placeSource: new HttpPlaceSource({
           baseUrl: env.XIVAPI_BASE_URL,
           userAgent: XIVAPI_USER_AGENT,

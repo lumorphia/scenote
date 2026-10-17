@@ -5,7 +5,7 @@ import { MemoryStorage } from "@lumorphia/storage";
 import { createDatabase, schema, type Database } from "@lumorphia-scenote/db";
 import { MemoryJobQueue } from "../jobs/queue.ts";
 import { imageMoveJob } from "../jobs/image-move.ts";
-import { tmpKey, variantKey } from "../storage-keys.ts";
+import { newImageKeyBase, tmpKey, variantKey } from "../storage-keys.ts";
 import { createUpload } from "./uploads.ts";
 import { changeVisibility, createPost, getPost, readPostImage, type Visibility } from "./posts.ts";
 
@@ -295,6 +295,69 @@ describe.skipIf(!databaseUrl)("post visibility (PostgreSQL)", () => {
       expect((await readPostImage({ db, storage }, me.id, post.id, "thumb")).body).toEqual(
         new Uint8Array([7]),
       );
+    });
+  });
+  // 自動モデレーションで保留した投稿 (ADR-0014)。画像は非公開の置き場所にあり、本人にだけ見える
+  describe("held posts", () => {
+    async function held(userId: string, visibility: Visibility = "public") {
+      const post = await published(userId, visibility);
+      const base = newImageKeyBase(post.id, "private");
+      for (const v of ["display", "thumb"] as const)
+        await storage.put({
+          key: variantKey(base, v),
+          body: new Uint8Array([9]),
+          contentType: "image/webp",
+        });
+      const [row] = await db
+        .update(schema.posts)
+        .set({ status: "held", moderationState: "held", imageKeyBase: base, publishedAt: null })
+        .where(eq(schema.posts.id, post.id))
+        .returning();
+      return row!;
+    }
+
+    it("hides a held post from everyone else", async () => {
+      const me = await user();
+      const other = await user();
+      const post = await held(me.id);
+      await expect(view(other.id, post.id)).rejects.toMatchObject({ code: "not_found" });
+      await expect(view(null, post.id)).rejects.toMatchObject({ code: "not_found" });
+    });
+
+    it("shows a held post to its owner with the image through the app", async () => {
+      const me = await user();
+      const post = await held(me.id);
+      expect(await view(me.id, post.id)).toMatchObject({
+        status: "held",
+        image: { display: `/api/posts/${post.id}/image/display` },
+      });
+    });
+
+    it("lets the owner read a held post's image", async () => {
+      const me = await user();
+      const post = await held(me.id);
+      const image = await readPostImage({ db, storage }, me.id, post.id, "display");
+      expect([...image.body]).toEqual([9]);
+    });
+
+    it("refuses a held post's image to everyone else", async () => {
+      const me = await user();
+      const post = await held(me.id);
+      await expect(readPostImage({ db, storage }, null, post.id, "display")).rejects.toMatchObject({
+        code: "not_found",
+      });
+    });
+
+    it("keeps a held post's images in the private place when the owner changes its visibility", async () => {
+      const me = await user();
+      const post = await held(me.id, "private");
+      await changeVisibility({ db, jobs }, me.id, post.id, "public");
+      expect(await reload(post.id)).toMatchObject({
+        visibility: "public",
+        imageKeyBase: post.imageKeyBase,
+        pendingImageKeyBase: null,
+      });
+      expect(jobs.ofType("image-move")).toEqual([]);
     });
   });
 });

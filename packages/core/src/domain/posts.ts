@@ -14,7 +14,7 @@ import { DomainError } from "./errors.ts";
 import { replacePostTags, tagsOf, validateTags, type TagInput } from "./tags.ts";
 import { isOfferedPlace } from "./places.ts";
 
-export type PostStatus = "processing" | "published" | "failed";
+export type PostStatus = "processing" | "published" | "failed" | "held";
 export const VISIBILITIES = ["public", "unlisted", "private"] as const;
 export type Visibility = (typeof VISIBILITIES)[number];
 
@@ -189,6 +189,10 @@ export type PostView = {
   createdAt: Date;
 };
 
+/** 派生画像ができている (保留した投稿にも、本人に見せる画像はある。ADR-0014) */
+const hasImages = (post: Pick<PostRow, "status">) =>
+  post.status === "published" || post.status === "held";
+
 /** 画像の URL。非公開の置き場所 (移している途中も含む) にあれば、アプリの中継を指す (ADR-0012) */
 function imageUrl(post: PostRow, imageBaseUrl: string, variant: Variant): string {
   return isPrivateKey(post.imageKeyBase)
@@ -204,7 +208,7 @@ export async function getPost(
 ): Promise<PostView> {
   const post = await loadViewable(db, viewerId, postId);
   const isOwner = viewerId === post.userId;
-  const ready = post.status === "published" && post.width != null && post.height != null;
+  const ready = hasImages(post) && post.width != null && post.height != null;
   return {
     id: post.id,
     status: post.status,
@@ -248,6 +252,11 @@ export async function changeVisibility(
       .for("update");
     if (!post) throw new DomainError("not_found", "post not found");
     if (post.visibility === to) return;
+    // 保留した投稿の画像は、範囲によらず非公開の置き場所に置いたまま (ADR-0014)
+    if (post.status === "held") {
+      await tx.update(schema.posts).set({ visibility: to }).where(eq(schema.posts.id, postId));
+      return;
+    }
     await tx
       .update(schema.posts)
       .set({ visibility: to, pendingImageKeyBase: newImageKeyBase(postId, to) })
@@ -264,8 +273,7 @@ export async function readPostImage(
   variant: Variant,
 ): Promise<{ body: Uint8Array; contentType: string }> {
   const post = await loadViewable(db, viewerId, postId);
-  const body =
-    post.status === "published" ? await storage.get(variantKey(post.imageKeyBase, variant)) : null;
+  const body = hasImages(post) ? await storage.get(variantKey(post.imageKeyBase, variant)) : null;
   if (!body) throw new DomainError("not_found", "image not found");
   return { body, contentType: "image/webp" };
 }

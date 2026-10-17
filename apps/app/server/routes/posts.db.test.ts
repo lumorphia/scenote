@@ -2,6 +2,7 @@ import sharp from "sharp";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { MemoryStorage } from "@lumorphia/storage";
+import { moderationConfigFromEnv } from "@lumorphia/moderation/image";
 import { schema } from "@lumorphia-scenote/db";
 import { startMockIssuer, type MockIssuer } from "@lumorphia/e2e/mock-issuer";
 import { lumorphiaUser } from "@lumorphia/e2e/playwright";
@@ -49,6 +50,8 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
         LOG_LEVEL: "error",
       }),
       storage: new MemoryStorage({ publicBaseUrl: "/_storage" }),
+      // E2E と同じ色で決める判定器 (赤一色を保留にする)
+      moderation: moderationConfigFromEnv({ IMAGE_MODERATION: "fake" }),
     });
     image = new Uint8Array(
       await sharp({
@@ -99,11 +102,11 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
     }
     throw new Error("the post stayed processing");
   }
-  async function post(cookie: string, fields: object = {}) {
+  async function post(cookie: string, fields: object = {}, bytes: Uint8Array = image) {
     const grant = (
-      await askUpload(cookie, { mime: "image/webp", bytes: image.byteLength })
+      await askUpload(cookie, { mime: "image/webp", bytes: bytes.byteLength })
     ).json() as Grant;
-    await put(grant, image);
+    await put(grant, bytes);
     return (await createPost(cookie, grant.uploadId, fields)).json() as { postId: string };
   }
 
@@ -203,6 +206,29 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
         .statusCode,
     ).toBe(404);
     expect((await app.inject({ method: "GET", url: made!.display })).statusCode).toBe(404);
+  });
+
+  it("holds a post the moderation finds unsafe, and shows it only to its owner", async () => {
+    const red = new Uint8Array(
+      await sharp({
+        create: { width: 400, height: 300, channels: 3, background: { r: 255, g: 0, b: 0 } },
+      })
+        .webp()
+        .toBuffer(),
+    );
+    const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+    const { postId } = await post(cookie, {}, red);
+    const mine = await published(cookie, postId);
+    expect(mine).toMatchObject({
+      status: "held",
+      image: { display: `/api/posts/${postId}/image/display` },
+    });
+    expect(
+      (await app.inject({ method: "GET", url: mine.image!.display, headers: { cookie } }))
+        .statusCode,
+    ).toBe(200);
+    expect((await readPost("", postId)).statusCode).toBe(404);
+    expect((await app.inject({ method: "GET", url: mine.image!.display })).statusCode).toBe(404);
   });
 
   it("lets the owner make a post private, and hides it at once", async () => {

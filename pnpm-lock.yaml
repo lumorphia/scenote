@@ -241,6 +241,9 @@ importers:
       '@lumorphia/editor-recipe':
         specifier: 1.0.0
         version: 1.0.0
+      '@lumorphia/moderation':
+        specifier: 1.0.0
+        version: 1.0.0(@types/node@24.19.2)
       '@lumorphia/ops':
         specifier: 1.0.0
         version: 1.0.0
@@ -332,6 +335,9 @@ importers:
       '@lumorphia/media':
         specifier: 1.1.0
         version: 1.1.0(@types/node@24.19.2)
+      '@lumorphia/moderation':
+        specifier: 1.0.0
+        version: 1.0.0(@types/node@24.19.2)
       '@lumorphia/storage':
         specifier: 1.0.0
         version: 1.0.0
@@ -1382,6 +1388,10 @@ packages:
 
   '@lumorphia/media@1.1.0':
     resolution: {integrity: sha512-ifUSajXpZwmRgqXmRdMHREqpLBQjjNVbp9RYd9SIPsyfK+l9scnI0yKECvwXX73775rkp9bLdS0asO5fFWwzcg==, tarball: https://npm.pkg.github.com/download/@lumorphia/media/1.1.0/404b385755926b3ff3366a7b5dfdbb6b7ea4d71d}
+
+  '@lumorphia/moderation@1.0.0':
+    resolution: {integrity: sha512-YZc47smhgx95Pyqd/3LLj9wz9WLMw7jtAF48JBSvmRB2dvEtR283ZiA0p4p1AHP4iN2CsyIr4F0Pd4DpldSxxQ==, tarball: https://npm.pkg.github.com/download/@lumorphia/moderation/1.0.0/633d3408ecbbe6e9f889d4fdf15be089f4474bb5}
+    hasBin: true
 
   '@lumorphia/ops@1.0.0':
     resolution: {integrity: sha512-GKp57Gg9tySC/LkvcU0L8yHEw7s6bBQKUUXcEG6U7llTC9WQfXMyN+sd/h5R6J3RD8EqDf5ingEHx2cPgd93jQ==, tarball: https://npm.pkg.github.com/download/@lumorphia/ops/1.0.0/48c70deba58ab02b9a05a57d7354a9fc50bb57d3}
@@ -4347,6 +4357,13 @@ snapshots:
   '@lumorphia/media@1.1.0(@types/node@24.19.2)':
     dependencies:
       blurhash: 2.0.5
+      sharp: 0.35.5(@types/node@24.19.2)
+    transitivePeerDependencies:
+      - '@types/node'
+
+  '@lumorphia/moderation@1.0.0(@types/node@24.19.2)':
+    dependencies:
+      '@huggingface/transformers': 3.8.1(@types/node@24.19.2)
       sharp: 0.35.5(@types/node@24.19.2)
     transitivePeerDependencies:
       - '@types/node'

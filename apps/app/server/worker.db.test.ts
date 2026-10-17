@@ -20,4 +20,22 @@ describe.skipIf(!url)("worker (PostgreSQL)", () => {
       /DATABASE_URL/,
     );
   });
+
+  // 本番は本物の判定器だけ (ADR-0014)。off と fake は開発と E2E のもの
+  it("refuses to start in production without the real image moderation", async () => {
+    await expect(
+      createWorker({ NODE_ENV: "production", DATABASE_URL: url, STORAGE_DRIVER: "memory" }),
+    ).rejects.toThrow(/IMAGE_MODERATION/);
+  });
+
+  it("refuses an image moderation driver it does not know", async () => {
+    await expect(
+      createWorker({
+        NODE_ENV: "test",
+        DATABASE_URL: url,
+        STORAGE_DRIVER: "memory",
+        IMAGE_MODERATION: "test-unknown",
+      }),
+    ).rejects.toThrow(/IMAGE_MODERATION/);
+  });
 });

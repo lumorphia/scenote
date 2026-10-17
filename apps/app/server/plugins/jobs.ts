@@ -5,6 +5,8 @@ import {
   startJobQueue,
   type JobQueue,
 } from "@lumorphia-scenote/core/jobs";
+import type { ModerationConfig } from "@lumorphia/moderation/image";
+import { moderationConfig } from "../moderation-config.ts";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -13,7 +15,7 @@ declare module "fastify" {
 }
 
 /** ジョブの投入。開発と E2E はアプリの中で走らせ (JOBS_INLINE)、本番は pg-boss に入れて worker が走らせる */
-export const jobsPlugin = fp<{ jobs?: JobQueue }>(
+export const jobsPlugin = fp<{ jobs?: JobQueue; moderation?: ModerationConfig }>(
   async (app, opts) => {
     if (opts.jobs) {
       app.decorate("jobs", opts.jobs);
@@ -22,7 +24,8 @@ export const jobsPlugin = fp<{ jobs?: JobQueue }>(
     if (app.env.JOBS_INLINE) {
       const queue = new InlineJobQueue(
         { db: app.db, storage: app.storage, log: app.log },
-        defaultJobs(),
+        // 判定器は環境変数で選ぶ (IMAGE_MODERATION)。E2E は fake、開発の既定は off
+        defaultJobs({ moderation: opts.moderation ?? moderationConfig(process.env) }),
       );
       app.decorate("jobs", queue);
       app.addHook("onClose", async () => queue.drain());

@@ -1,4 +1,14 @@
-import { date, index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  date,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  real,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { id, timestamps } from "./_common.ts";
 import { users } from "./users.ts";
 import { places } from "./places.ts";
@@ -38,8 +48,11 @@ export const posts = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    /** processing: 派生画像を作っている。published: 見られる。failed: 画像を受け付けなかった */
-    status: text("status", { enum: ["processing", "published", "failed"] })
+    /**
+     * processing: 派生画像を作っている。published: 見られる。failed: 画像を受け付けなかった。
+     * held: 自動モデレーションで保留した。本人にだけ見え、画像は非公開の置き場所にある (ADR-0014)
+     */
+    status: text("status", { enum: ["processing", "published", "failed", "held"] })
       .notNull()
       .default("processing"),
     /** 公開範囲 (ADR-0004)。既定は公開 */
@@ -70,6 +83,14 @@ export const posts = pgTable(
     placeText: text("place_text"),
     /** 現像のレシピ (@lumorphia/editor-recipe)。画像には埋め込まず、ここに残す (ADR-0003) */
     recipe: jsonb("recipe"),
+    /**
+     * 自動モデレーションの結果 (@lumorphia/moderation、ADR-0014)。判定していなければ null。
+     * flagged は公開したまま運営が確かめるもの、held は保留。score と labels は、しきい値を見直すときの材料
+     */
+    moderationState: text("moderation_state", { enum: ["clear", "flagged", "held"] }),
+    moderationScore: real("moderation_score"),
+    moderationLabels: jsonb("moderation_labels").$type<Record<string, number>>(),
+    moderatedAt: timestamp("moderated_at", { withTimezone: true }),
     /** 受け付けなかった理由 (@lumorphia/media の ImageRejectedError の reason など) */
     failureReason: text("failure_reason"),
     publishedAt: timestamp("published_at", { withTimezone: true }),

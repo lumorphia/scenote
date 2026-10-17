@@ -3,13 +3,23 @@ import { eq } from "drizzle-orm";
 import sharp from "sharp";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { SharpImageProcessor } from "@lumorphia/media";
+import {
+  CompositeImageModerator,
+  DEFAULT_MODERATION_THRESHOLDS,
+  FakeGameImageClassifier,
+  FakeImageModerator,
+} from "@lumorphia/moderation/image";
 import { MemoryStorage } from "@lumorphia/storage";
 import { createDatabase, schema, type Database } from "@lumorphia-scenote/db";
 import { createUpload } from "../domain/uploads.ts";
 import { createPost } from "../domain/posts.ts";
-import { tmpKey, variantKey } from "../storage-keys.ts";
+import { isPrivateKey, tmpKey, variantKey } from "../storage-keys.ts";
 import { MemoryJobQueue } from "./queue.ts";
-import { createImageProcessJob, PUBLIC_IMAGE_CACHE_CONTROL } from "./image-process.ts";
+import {
+  createImageProcessJob,
+  PRIVATE_IMAGE_CACHE_CONTROL,
+  PUBLIC_IMAGE_CACHE_CONTROL,
+} from "./image-process.ts";
 import type { JobContext } from "./context.ts";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -75,7 +85,11 @@ describe.skipIf(!databaseUrl)("image-process job (PostgreSQL)", () => {
   });
 
   /** 受け取りから投稿を作るところまで (ブラウザが bytes を PUT した形) */
-  async function postWith(bytes: Uint8Array, mime: "image/webp" | "image/jpeg" | "image/png") {
+  async function postWith(
+    bytes: Uint8Array,
+    mime: "image/webp" | "image/jpeg" | "image/png",
+    visibility: "public" | "unlisted" | "private" = "public",
+  ) {
     const sub = randomUUID();
     const [me] = await db
       .insert(schema.users)
@@ -93,6 +107,7 @@ describe.skipIf(!databaseUrl)("image-process job (PostgreSQL)", () => {
     await storage.put({ key: tmpKey(uploadId), body: bytes, contentType: mime });
     const { postId } = await createPost({ db, storage, jobs: new MemoryJobQueue() }, me!.id, {
       uploadId,
+      visibility,
     });
     const post = await db.query.posts.findFirst({ where: eq(schema.posts.id, postId) });
     return { postId, uploadId, base: post!.imageKeyBase };
@@ -190,5 +205,108 @@ describe.skipIf(!databaseUrl)("image-process job (PostgreSQL)", () => {
 
   it("does nothing for a post that no longer exists", async () => {
     await expect(job.handler({ postId: randomUUID() }, ctx)).resolves.toBeUndefined();
+  });
+  it("leaves a post unjudged when no moderator is given", async () => {
+    const { postId } = await postWith(await webpWithMetadata(), "image/webp");
+    await job.handler({ postId }, ctx);
+    expect(await reload(postId)).toMatchObject({ moderationState: null, moderatedAt: null });
+  });
+
+  // 自動モデレーション (docs/plan.md の S5f、ADR-0014)。しきい値は書かず、パッケージの既定から決める (ADR-0007)
+  describe("with a moderator", () => {
+    const thresholds = DEFAULT_MODERATION_THRESHOLDS;
+    const nsfw = new FakeImageModerator();
+    const game = new FakeGameImageClassifier();
+    const judged = createImageProcessJob(new SharpImageProcessor(), {
+      moderator: new CompositeImageModerator(nsfw, game),
+      thresholds,
+    });
+    beforeEach(() => {
+      nsfw.reset();
+      game.reset();
+    });
+
+    it("judges the display image, not the received one", async () => {
+      const { postId, base } = await postWith(await webpWithMetadata(), "image/webp");
+      await judged.handler({ postId }, ctx);
+      expect(nsfw.classified).toHaveLength(1);
+      expect(Buffer.from(nsfw.classified[0]!)).toEqual(
+        Buffer.from((await storage.get(variantKey(base, "display")))!),
+      );
+    });
+
+    it("publishes a clear post and records the judgement", async () => {
+      nsfw.nextScore(0);
+      const { postId } = await postWith(await webpWithMetadata(), "image/webp");
+      await judged.handler({ postId }, ctx);
+      const post = await reload(postId);
+      expect(post).toMatchObject({
+        status: "published",
+        moderationState: "clear",
+        moderationScore: 0,
+      });
+      expect(post?.moderationLabels).toMatchObject({ nsfw: 0 });
+      expect(post?.moderatedAt).toBeInstanceOf(Date);
+    });
+
+    it("publishes a flagged post but marks it for review", async () => {
+      nsfw.nextScore((thresholds.review + thresholds.held) / 2);
+      const { postId } = await postWith(await webpWithMetadata(), "image/webp");
+      await judged.handler({ postId }, ctx);
+      expect(await reload(postId)).toMatchObject({
+        status: "published",
+        moderationState: "flagged",
+      });
+    });
+
+    it("holds a post whose image looks unsafe", async () => {
+      nsfw.nextScore(1);
+      const { postId } = await postWith(await webpWithMetadata(), "image/webp");
+      await judged.handler({ postId }, ctx);
+      const post = await reload(postId);
+      expect(post).toMatchObject({ status: "held", moderationState: "held", publishedAt: null });
+    });
+
+    it("holds a post whose image does not look like the game", async () => {
+      game.nextScore(0);
+      const { postId } = await postWith(await webpWithMetadata(), "image/webp");
+      await judged.handler({ postId }, ctx);
+      expect(await reload(postId)).toMatchObject({ status: "held", moderationState: "held" });
+    });
+
+    it("keeps a held public post's images out of the public place", async () => {
+      nsfw.nextScore(1);
+      const { postId, base } = await postWith(await webpWithMetadata(), "image/webp");
+      await judged.handler({ postId }, ctx);
+      const post = await reload(postId);
+      expect(isPrivateKey(post!.imageKeyBase)).toBe(true);
+      expect(await storage.get(variantKey(base, "display"))).toBeNull();
+      for (const variant of ["display", "thumb"] as const)
+        expect(await storage.head(variantKey(post!.imageKeyBase, variant))).toMatchObject({
+          cacheControl: PRIVATE_IMAGE_CACHE_CONTROL,
+        });
+    });
+
+    it("keeps a held post's chosen visibility", async () => {
+      nsfw.nextScore(1);
+      const { postId } = await postWith(await webpWithMetadata(), "image/webp", "unlisted");
+      await judged.handler({ postId }, ctx);
+      expect((await reload(postId))?.visibility).toBe("unlisted");
+    });
+
+    it("forgets the received image of a held post", async () => {
+      nsfw.nextScore(1);
+      const { postId, uploadId } = await postWith(await webpWithMetadata(), "image/webp");
+      await judged.handler({ postId }, ctx);
+      expect(await storage.get(tmpKey(uploadId))).toBeNull();
+    });
+
+    it("does nothing for a post that is already held", async () => {
+      nsfw.nextScore(1);
+      const { postId } = await postWith(await webpWithMetadata(), "image/webp");
+      await judged.handler({ postId }, ctx);
+      await judged.handler({ postId }, ctx);
+      expect(nsfw.classified).toHaveLength(1);
+    });
   });
 });
