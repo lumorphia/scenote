@@ -43,23 +43,30 @@ export function SiteHeader() {
   const next = `${location.pathname}${location.search}`;
   return (
     <header className="flex items-center justify-between gap-4 border-b border-line-soft px-4 py-3">
-      <Link to="/" className="font-semibold">
+      <Link to="/" className="shrink-0 font-semibold">
         Scenote
       </Link>
       {me?.user ? (
-        <div className="flex items-center gap-3 text-sm">
-          <span data-testid="signed-in-user" className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-3 text-sm">
+          {/* 狭い画面では表示名を隠し、アイコンと handle だけにする */}
+          <span data-testid="signed-in-user" className="flex min-w-0 items-center gap-2">
             {me.user.image ? (
-              <img src={me.user.image} alt="" width={24} height={24} className="rounded-full" />
+              <img
+                src={me.user.image}
+                alt=""
+                width={24}
+                height={24}
+                className="shrink-0 rounded-full"
+              />
             ) : null}
-            <span>{me.user.name}</span>
-            <span className="text-ink-muted">@{me.user.handle}</span>
+            <span className="hidden truncate sm:inline">{me.user.name}</span>
+            <span className="truncate text-ink-muted">@{me.user.handle}</span>
           </span>
           <button
             type="button"
             onClick={() => void logout()}
             disabled={busy}
-            className="rounded-md border border-line px-3 py-1 hover:bg-surface-hover"
+            className="shrink-0 whitespace-nowrap rounded-md border border-line px-3 py-1 hover:bg-surface-hover"
           >
             ログアウト
           </button>
