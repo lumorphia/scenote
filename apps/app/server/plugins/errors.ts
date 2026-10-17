@@ -47,9 +47,13 @@ export const errorsPlugin = fp<ErrorsPluginOptions>(
         });
       }
       if (isDomainError(err)) {
-        return reply
-          .code(STATUS[err.code])
-          .send({ error: { code: err.code, message: err.message } });
+        return reply.code(STATUS[err.code]).send({
+          error: {
+            code: err.code,
+            message: err.message,
+            ...(err.issues ? { issues: err.issues } : {}),
+          },
+        });
       }
       const statusCode = (err as { statusCode?: number }).statusCode;
       if (statusCode === 429) {

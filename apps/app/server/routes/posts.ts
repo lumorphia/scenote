@@ -12,6 +12,7 @@ import {
   VISIBILITIES,
 } from "@lumorphia-scenote/core/domain/posts";
 import { DomainError } from "@lumorphia-scenote/core";
+import { findBlockedText } from "@lumorphia-scenote/core/domain/blocked-text";
 import { withErrors } from "../schemas/error.ts";
 
 const postSchema = z.object({
@@ -104,6 +105,29 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
       );
       return reply.code(201).send(created);
     },
+  );
+
+  // 投稿画面が、画像を送る前に NG 語を確かめる (受け取りの枠を無駄にしない。ADR-0015)。語の一覧は返さない
+  app.post(
+    "/posts/check-text",
+    {
+      schema: {
+        tags: ["posts"],
+        summary: "タイトル・本文・タグ・撮影場所に使えない語が無いか確かめる",
+        body: z.object({
+          title: z.string().max(500).nullish(),
+          body: z.string().max(5000).nullish(),
+          tags: z.array(z.string().max(200)).max(50).optional(),
+          placeText: z.string().max(500).nullish(),
+        }),
+        response: withErrors({
+          200: z.object({ blocked: z.enum(["title", "body", "tags", "placeText"]).nullable() }),
+        }),
+      },
+      config: { rateLimit: { max: 60, timeWindow: "1 minute" } },
+      preValidation: [app.requireAuth],
+    },
+    async (req) => ({ blocked: findBlockedText(req.body) }),
   );
 
   app.get(
