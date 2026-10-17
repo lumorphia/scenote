@@ -1,29 +1,46 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 
 type Me = {
-  user: { handle: string; name: string; image: string | null } | null;
+  user: { handle: string; name: string; image: string | null; needsConsent: boolean } | null;
   loginAvailable: boolean;
 };
 
-/** ヘッダー。ログインの状態は本人の API (/api/me) から読む。読み終わるまではログインの欄を出さない */
+/** 同意する前でも開けるページ (同意の画面と、同意する中身) */
+const CONSENT_FREE = ["/welcome", "/terms", "/privacy"];
+
+/**
+ * ヘッダー。ログインの状態は本人の API (/api/me) から読む。読み終わるまではログインの欄を出さない。
+ * 今の版の規約に同意していない人は、同意の画面 (/welcome) へ送る (ADR-0023)
+ */
 export function SiteHeader() {
   const location = useLocation();
-  const [me, setMe] = useState<Me | null>(null);
+  const navigate = useNavigate();
+  // どのページで読んだ結果かも持つ。同意した直後に前のページの結果で /welcome へ送り返さないため
+  const [loaded, setLoaded] = useState<{ me: Me | null; key: string } | null>(null);
+  const me = loaded?.me ?? null;
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
+    const key = location.key;
     void fetch("/api/me", { credentials: "same-origin" })
       .then((res) => (res.ok ? (res.json() as Promise<Me>) : null))
       .then((data) => {
-        if (active) setMe(data);
+        if (active) setLoaded({ me: data, key });
       })
       .catch(() => undefined);
     return () => {
       active = false;
     };
   }, [location.key]);
+
+  useEffect(() => {
+    if (loaded?.key !== location.key) return;
+    if (!loaded.me?.user?.needsConsent || CONSENT_FREE.includes(location.pathname)) return;
+    const next = `${location.pathname}${location.search}`;
+    void navigate(`/welcome?next=${encodeURIComponent(next)}`, { replace: true });
+  }, [loaded, location.key, location.pathname, location.search, navigate]);
 
   async function logout() {
     setBusy(true);

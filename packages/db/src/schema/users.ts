@@ -24,6 +24,12 @@ export const users = pgTable(
       .notNull()
       .default("active"),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    /**
+     * 同意した規約とプライバシーポリシーの版 ("terms=1.0;privacy=1.0"、@lumorphia/legal の形) と日時 (ADR-0023)。
+     * 15 歳以上であることの確認も、同じ同意で受ける
+     */
+    termsAcceptedVersion: text("terms_accepted_version"),
+    termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [

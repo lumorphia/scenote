@@ -25,6 +25,7 @@
     "@lumorphia/editor-engine": "1.0.0",
     "@lumorphia/editor-react": "1.0.0",
     "@lumorphia/editor-recipe": "1.0.0",
+    "@lumorphia/legal": "1.0.0",
     "@lumorphia/moderation": "1.0.0",
     "@lumorphia/ops": "1.0.0",
     "@lumorphia/storage": "1.0.0",
