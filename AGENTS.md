@@ -32,7 +32,7 @@ scripts/        dev-certs.sh (開発と E2E の TLS)
 
 ログインは Lumorphia アカウントだけ。`@lumorphia/auth-client` を Better Auth の `genericOAuth` に渡す。handle・表示名・アイコンは Lumorphia の写しで、ログインのたびに書き換える。`LUMORPHIA_*` が揃っていないとログインは出ない (`.env.example`、`docs/runbook/lumorphia-client.md`)。
 
-- `/login` は `/api/lumorphia/login` へ、そこが accounts の認可へ 302 で送る。SSR の loader から自分の API を呼ばない (E2E は Fastify が https で受けるので)
+- `/login` は `/api/lumorphia/login` へ、そこが accounts の認可へ 302 で送る。SSR の loader から自分の API を呼ばない (E2E は Fastify が https で受けるので)。サーバーの中のものが要る loader は、load context の `serverReadsContext` (`web/lib/server-context.ts`、`server/load-context.ts`) から読む (ADR-0018)
 - E2E の発行元は `@lumorphia/e2e` の偽物 (3454・3455)。`approveLumorphia(page, user, LUMORPHIA)` で、次のログインで承認する利用者を決める (`e2e/login.spec.ts`)
 - サーバーのテストも同じ偽物をテストの中で起こす (`server/routes/lumorphia.db.test.ts`、CA は `server/test/lumorphia-tls-setup.ts`)
 
