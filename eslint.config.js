@@ -52,6 +52,10 @@ const webOnlyDependsOnApi = {
             ],
             message: "サーバーの基盤。web は @lumorphia/ops/sentry だけを使う",
           },
+          {
+            group: ["@lumorphia/moderation", "@lumorphia/moderation/*"],
+            message: "判定の決まりと NG 語を利用者のブラウザに配らない (ADR-0007、ADR-0014)",
+          },
         ],
       },
     ],

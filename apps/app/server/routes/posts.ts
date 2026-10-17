@@ -16,7 +16,7 @@ import { withErrors } from "../schemas/error.ts";
 
 const postSchema = z.object({
   id: z.string(),
-  status: z.enum(["processing", "published", "failed"]),
+  status: z.enum(["processing", "published", "failed", "held"]),
   visibility: z.enum(VISIBILITIES),
   isOwner: z.boolean(),
   failureReason: z.string().nullable(),

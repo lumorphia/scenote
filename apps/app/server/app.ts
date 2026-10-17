@@ -19,6 +19,7 @@ import { jobsPlugin } from "./plugins/jobs.ts";
 import { postRoutes } from "./routes/posts.ts";
 import type { ObjectStorage } from "@lumorphia/storage";
 import type { JobQueue } from "@lumorphia-scenote/core/jobs";
+import type { ModerationConfig } from "@lumorphia/moderation/image";
 import { meRoutes } from "./routes/me.ts";
 import { lumorphiaRoutes } from "./routes/lumorphia.ts";
 import { securityPlugin } from "./plugins/security.ts";
@@ -37,6 +38,8 @@ export type BuildAppOptions = {
   storage?: ObjectStorage;
   /** テスト用: ジョブの投入を差し替える (既定は JOBS_INLINE か pg-boss) */
   jobs?: JobQueue;
+  /** テスト用: アプリの中で走るジョブの画像の判定器を差し替える (既定は moderation-config.ts) */
+  moderation?: ModerationConfig;
   /** テスト用: 未知の 500 エラーの外部通知を差し替える */
   captureException?: CaptureException;
 };
@@ -91,7 +94,11 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   // ジョブはログインの前に用意する (退会から 30 日を過ぎた人の画像を消すため)
   await app.register(storagePlugin, opts.storage ? { storage: opts.storage } : {});
   await app.register(devStoragePlugin);
-  if (!opts.skipDb) await app.register(jobsPlugin, opts.jobs ? { jobs: opts.jobs } : {});
+  if (!opts.skipDb)
+    await app.register(jobsPlugin, {
+      ...(opts.jobs ? { jobs: opts.jobs } : {}),
+      ...(opts.moderation ? { moderation: opts.moderation } : {}),
+    });
 
   if (!opts.skipDb) await app.register(authPlugin);
 
