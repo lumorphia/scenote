@@ -1,25 +1,11 @@
-import type { Browser, Page } from "@playwright/test";
-import { approveLumorphia, lumorphiaUser, type MockLumorphiaUser } from "@lumorphia/e2e/playwright";
+import { approveLumorphia, lumorphiaUser } from "@lumorphia/e2e/playwright";
 import { BLOCKED_TERMS } from "@lumorphia/moderation/text";
 import { expect, test } from "./test.ts";
-import { gotoHydrated, openEditorWithImage } from "./helpers.ts";
+import { gotoHydrated } from "./helpers.ts";
 import { LUMORPHIA } from "./lumorphia.ts";
+import { asSomeoneElse, login, post, sendToPostForm } from "./posting.ts";
 
 // 現像から投稿まで (docs/plan.md の S5b、ADR-0011)。画像はテストの中で作る
-
-async function login(page: Page, user: MockLumorphiaUser) {
-  await approveLumorphia(page, user, LUMORPHIA);
-  await gotoHydrated(page, "/");
-  await page.getByRole("link", { name: "ログイン" }).click();
-  await expect(page.getByTestId("signed-in-user")).toContainText(`@${user.handle}`);
-}
-
-async function sendToPostForm(page: Page, colors?: readonly string[]) {
-  await openEditorWithImage(page, colors);
-  await page.getByRole("button", { name: "Scenoteへ投稿" }).click();
-  await expect(page).toHaveURL(/\/post\/new$/);
-  await expect(page.getByTestId("post-preview")).toBeVisible();
-}
 
 test("a developed photo can be posted and appears once it is ready", async ({ page }) => {
   await login(page, lumorphiaUser());
@@ -61,21 +47,6 @@ test("the post form without a photo leads back to the editor", async ({ page }) 
   await expect(page.getByText("投稿する写真がありません")).toBeVisible();
   await expect(page.getByRole("link", { name: "現像する" })).toHaveAttribute("href", "/edit");
 });
-
-/** もう 1 人の利用者でログインしたページで、url を開く */
-async function asSomeoneElse(browser: Browser, url: string) {
-  const other = await browser.newPage();
-  await login(other, lumorphiaUser());
-  await other.goto(url);
-  return other;
-}
-
-async function post(page: Page, visibility?: "公開" | "限定公開" | "非公開") {
-  await sendToPostForm(page);
-  if (visibility) await page.getByRole("radio", { name: new RegExp(`^${visibility}`) }).check();
-  await page.getByRole("button", { name: "投稿する" }).click();
-  await expect(page.getByTestId("post-image")).toBeVisible();
-}
 
 test("a post is public unless the user chooses otherwise", async ({ page }) => {
   await login(page, lumorphiaUser());
