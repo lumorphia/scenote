@@ -44,7 +44,7 @@ scripts/        dev-certs.sh (開発と E2E の TLS)
 - 開発と E2E はジョブをアプリの中で走らせる (`JOBS_INLINE`、既定で有効)。本番は `pnpm --filter @lumorphia-scenote/app worker`
 - 現像の「Scenoteへ投稿」は、書き出した画像とレシピを IndexedDB (`scenote-editor` の `pending-post`) に置いて `/post/new` に進む。ログインに出ても残る (`web/features/post-form/`)。投稿のあとは `/posts/:id` (自分の投稿) で仕上がりを待つ
 - 派生画像を作ったら `@lumorphia/moderation/image` で判定し、保留 (`held`) した投稿は本人にだけ見せ、画像は `private/` に置く (ADR-0014)。判定器は `IMAGE_MODERATION` (開発 `off`、E2E とサーバーのテスト `fake`、本番 `onnx`)。テストのスコアはパッケージの既定のしきい値から作り、数字を書かない
-- タイトル・本文・タグ・自由入力の撮影場所は NG 語と照合する (`domain/blocked-text.ts`、ADR-0015)。投稿画面は画像を送る前に `POST /api/posts/check-text` で確かめる。断るときは欄だけを `error.issues` で返し、語は返さない。テストの語は `BLOCKED_TERMS` から取る
+- タイトル・本文・タグ・自由入力の撮影場所は NG 語と照合する (`domain/blocked-text.ts` の `checkText`、ADR-0015)。語は組み込みの一覧と、運営が管理画面で足す `blocked_terms` (ADR-0022)。投稿画面は画像を送る前に `POST /api/posts/check-text` で確かめる。断るときは欄だけを `error.issues` で返し、語は返さない。テストの語は `BLOCKED_TERMS` から取る
 - テストの画像はテストの中で sharp で作る。EXIF や拡張チャンクが落ちることは `packages/core/src/jobs/image-process.db.test.ts` で確かめる
 
 ## 管理画面 (ADR-0019)
