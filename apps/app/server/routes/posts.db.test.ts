@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { MemoryStorage } from "@lumorphia/storage";
 import { moderationConfigFromEnv } from "@lumorphia/moderation/image";
+import { BLOCKED_TERMS } from "@lumorphia/moderation/text";
 import { schema } from "@lumorphia-scenote/db";
 import { startMockIssuer, type MockIssuer } from "@lumorphia/e2e/mock-issuer";
 import { lumorphiaUser } from "@lumorphia/e2e/playwright";
@@ -229,6 +230,63 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
     ).toBe(200);
     expect((await readPost("", postId)).statusCode).toBe(404);
     expect((await app.inject({ method: "GET", url: mine.image!.display })).statusCode).toBe(404);
+  });
+
+  // NG 語 (S5g、ADR-0015)。語はパッケージの一覧から取る
+  describe("blocked words", () => {
+    const word = `テスト_${BLOCKED_TERMS.find((t) => t.match === "contains")!.term}`;
+    const checkText = (cookie: string, payload: object) =>
+      app.inject({
+        method: "POST",
+        url: "/api/posts/check-text",
+        headers: mutating(cookie),
+        payload,
+      });
+
+    it("checks the words before the image is sent, only for someone logged in", async () => {
+      expect((await checkText("", { title: "テスト_夕焼け" })).statusCode).toBe(401);
+    });
+
+    it("answers that ordinary words are fine", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const res = await checkText(cookie, {
+        title: "テスト_夕焼け",
+        body: "テスト_本文",
+        tags: ["テスト_海"],
+        placeText: "テスト_浜辺",
+      });
+      expect(res.json()).toEqual({ blocked: null });
+    });
+
+    it("answers which field has a blocked word, without the word", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const res = await checkText(cookie, { body: word });
+      expect(res.json()).toEqual({ blocked: "body" });
+    });
+
+    it("refuses a post with a blocked word, naming the field", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const grant = (
+        await askUpload(cookie, { mime: "image/webp", bytes: image.byteLength })
+      ).json() as Grant;
+      await put(grant, image);
+      const res = await createPost(cookie, grant.uploadId, { title: word });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error.issues).toEqual([{ path: "title", message: expect.any(String) }]);
+    });
+
+    it("refuses tags with a blocked word when they are changed", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { postId } = await post(cookie);
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/posts/${postId}`,
+        headers: mutating(cookie),
+        payload: { tags: [word] },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error.issues).toEqual([{ path: "tags", message: expect.any(String) }]);
+    });
   });
 
   it("lets the owner make a post private, and hides it at once", async () => {

@@ -26,6 +26,9 @@ beforeAll(async () => {
     const { code } = req.params as { code: DomainError["code"] };
     throw new DomainError(code, `boom ${code}`);
   });
+  app.get("/domain-issues", async () => {
+    throw new DomainError("validation", "test-message", [{ path: "title", message: "test-issue" }]);
+  });
   app.get("/too-many", async () => {
     const err = new Error("slow down") as Error & { statusCode: number };
     err.statusCode = 429;
@@ -67,6 +70,18 @@ describe("errorsPlugin", () => {
     const res = await app.inject({ method: "GET", url: `/domain/${code}` });
     expect(res.statusCode).toBe(status);
     expect(res.json()).toEqual({ error: { code, message: `boom ${code}` } });
+  });
+
+  it("passes the issues of a DomainError through", async () => {
+    const res = await app.inject({ method: "GET", url: "/domain-issues" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({
+      error: {
+        code: "validation",
+        message: "test-message",
+        issues: [{ path: "title", message: "test-issue" }],
+      },
+    });
   });
 
   it("maps statusCode 429 to rate_limited", async () => {

@@ -1,13 +1,22 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { BLOCKED_TERMS } from "@lumorphia/moderation/text";
 import { MemoryStorage } from "@lumorphia/storage";
 import { DEFAULT_RECIPE } from "@lumorphia/editor-recipe";
 import { createDatabase, schema, type Database } from "@lumorphia-scenote/db";
 import { MemoryJobQueue } from "../jobs/queue.ts";
 import { tmpKey, variantKey } from "../storage-keys.ts";
 import { createUpload, UPLOAD_TTL_MS } from "./uploads.ts";
-import { createPost, getPost, MAX_BODY_LENGTH, MAX_TITLE_LENGTH } from "./posts.ts";
+import {
+  changePlace,
+  changeTags,
+  createPost,
+  getPost,
+  MAX_BODY_LENGTH,
+  MAX_TITLE_LENGTH,
+} from "./posts.ts";
+import { DomainError } from "./errors.ts";
 
 const databaseUrl = process.env.DATABASE_URL;
 const IMAGE_BASE = "https://img.example.invalid";
@@ -243,6 +252,60 @@ describe.skipIf(!databaseUrl)("posts (PostgreSQL)", () => {
       await expect(
         getPost({ db, imageBaseUrl: IMAGE_BASE }, other.id, postId),
       ).rejects.toMatchObject({ code: "not_found" });
+    });
+  });
+  // NG 語 (docs/plan.md の S5g、ADR-0015)。語はパッケージの一覧から取り、どの語に当たったかは返さない
+  describe("blocked words", () => {
+    const word = `テスト_${BLOCKED_TERMS.find((t) => t.match === "contains")!.term}`;
+    const blocked = (field: string) => ({
+      code: "validation",
+      issues: [{ path: field, message: expect.any(String) }],
+    });
+
+    it.each([
+      ["title", { title: word }],
+      ["body", { body: word }],
+      ["tags", { tags: [word] }],
+      ["placeText", { placeText: word }],
+    ])("refuses a post with a blocked word in %s", async (field, fields) => {
+      const me = await user();
+      await expect(
+        createPost(deps(), me.id, { uploadId: await uploaded(me.id), ...fields }),
+      ).rejects.toMatchObject(blocked(field));
+    });
+
+    it("does not tell which word was blocked", async () => {
+      const me = await user();
+      const error: unknown = await createPost(deps(), me.id, {
+        uploadId: await uploaded(me.id),
+        title: word,
+      }).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(DomainError);
+      const { message, issues } = error as DomainError;
+      expect(JSON.stringify({ message, issues })).not.toContain(word.slice("テスト_".length));
+    });
+
+    it("leaves the upload unused when it refuses", async () => {
+      const me = await user();
+      const uploadId = await uploaded(me.id);
+      await createPost(deps(), me.id, { uploadId, title: word }).catch(() => {});
+      await expect(createPost(deps(), me.id, { uploadId })).resolves.toHaveProperty("postId");
+    });
+
+    it("refuses tags with a blocked word when they are changed", async () => {
+      const me = await user();
+      const { postId } = await createPost(deps(), me.id, { uploadId: await uploaded(me.id) });
+      await expect(changeTags({ db }, me.id, postId, [word])).rejects.toMatchObject(
+        blocked("tags"),
+      );
+    });
+
+    it("refuses a written place with a blocked word when it is changed", async () => {
+      const me = await user();
+      const { postId } = await createPost(deps(), me.id, { uploadId: await uploaded(me.id) });
+      await expect(changePlace({ db }, me.id, postId, { placeText: word })).rejects.toMatchObject(
+        blocked("placeText"),
+      );
     });
   });
 });
