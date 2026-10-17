@@ -12,6 +12,7 @@ import {
 import { formatDate, formatTakenOn } from "../lib/format-date.ts";
 import { CopyUrlButton } from "../features/post-detail/CopyUrlButton.tsx";
 import { DeletePost } from "../features/post-detail/DeletePost.tsx";
+import { ReportPost } from "../features/reports/ReportPost.tsx";
 import { postMeta } from "../lib/ogp.ts";
 import { serverReadsContext } from "../lib/server-context.ts";
 import type { Route } from "./+types/post";
@@ -186,6 +187,7 @@ export default function Post() {
             ))}
           </ul>
         ) : null}
+        {!post.isOwner && post.status === "published" ? <ReportPost postId={post.id} /> : null}
       </article>
 
       {post.isOwner ? (
