@@ -10,4 +10,7 @@ export default [
   route("u/:handle", "routes/user.tsx"),
   route("me", "routes/me.tsx"),
   route("admin", "routes/admin.tsx"),
+  route("terms", "routes/terms.tsx"),
+  route("privacy", "routes/privacy.tsx"),
+  route("welcome", "routes/welcome.tsx"),
 ] satisfies RouteConfig;
