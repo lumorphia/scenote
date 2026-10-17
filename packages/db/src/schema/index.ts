@@ -4,3 +4,4 @@ export * from "./lumorphia.ts";
 export * from "./posts.ts";
 export * from "./tags.ts";
 export * from "./places.ts";
+export * from "./admin.ts";

@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNotNull, lte, notExists, notInArray } from "drizzle-orm";
 import { schema } from "@lumorphia-scenote/db";
 import { TMP_PREFIX, tmpKey } from "../storage-keys.ts";
+import { purgeOldAuditLogs } from "../domain/admin.ts";
 import type { JobDefinition } from "./context.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -63,5 +64,15 @@ export const imageDeleteJob: JobDefinition<ImageDeleteData> = {
       if (keys.length) await storage.delete(keys);
     }
     log.info({ posts: keyBases.length }, "images deleted");
+  },
+};
+
+/** 管理画面の操作の記録のうち、保存期間 (1 年) を過ぎたものを毎日消す (ADR-0019) */
+export const auditLogPurgeJob: JobDefinition<object> = {
+  name: "audit-log-purge",
+  cron: "40 3 * * *",
+  async handler(_data, { db, log }) {
+    const purged = await purgeOldAuditLogs(db);
+    if (purged) log.info({ purged }, "old audit logs purged");
   },
 };

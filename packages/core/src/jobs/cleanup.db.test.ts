@@ -5,7 +5,8 @@ import { MemoryStorage } from "@lumorphia/storage";
 import { createDatabase, schema, type Database } from "@lumorphia-scenote/db";
 import { createUpload, UPLOAD_TTL_MS } from "../domain/uploads.ts";
 import { tmpKey, variantKey } from "../storage-keys.ts";
-import { imageDeleteJob, uploadCleanupJob } from "./cleanup.ts";
+import { auditLogPurgeJob, imageDeleteJob, uploadCleanupJob } from "./cleanup.ts";
+import { AUDIT_RETENTION_DAYS } from "../domain/admin.ts";
 import type { JobContext } from "./context.ts";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -95,6 +96,39 @@ describe.skipIf(!databaseUrl)("cleanup jobs (PostgreSQL)", () => {
       });
       await uploadCleanupJob.handler({}, ctx);
       expect(await storage.list("tmp/")).toEqual([]);
+    });
+  });
+
+  // 管理画面の操作の記録 (S7a、ADR-0019)。保存期間を過ぎたものを毎日消す
+  describe("audit-log-purge", () => {
+    it("forgets records older than the retention period", async () => {
+      await db.delete(schema.adminAuditLogs);
+      const old = new Date(Date.now() - (AUDIT_RETENTION_DAYS + 1) * 86_400_000);
+      await db.insert(schema.adminAuditLogs).values([
+        {
+          adminSub: "test-admin-sub",
+          action: "post_hidden",
+          targetType: "post",
+          targetId: "test-old",
+          reason: "テスト_理由",
+          createdAt: old,
+        },
+        {
+          adminSub: "test-admin-sub",
+          action: "post_hidden",
+          targetType: "post",
+          targetId: "test-new",
+          reason: "テスト_理由",
+        },
+      ]);
+      await auditLogPurgeJob.handler({}, ctx);
+      expect((await db.select().from(schema.adminAuditLogs)).map((r) => r.targetId)).toEqual([
+        "test-new",
+      ]);
+    });
+
+    it("runs every day", () => {
+      expect(auditLogPurgeJob.cron).toMatch(/^\d+ \d+ \* \* \*$/);
     });
   });
 
