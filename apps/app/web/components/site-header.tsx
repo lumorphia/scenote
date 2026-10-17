@@ -48,6 +48,9 @@ export function SiteHeader() {
       </Link>
       {me?.user ? (
         <div className="flex min-w-0 items-center gap-3 text-sm">
+          <Link to="/me" className="shrink-0 whitespace-nowrap hover:underline">
+            自分の投稿
+          </Link>
           {/* 狭い画面では表示名を隠し、アイコンと handle だけにする */}
           <span data-testid="signed-in-user" className="flex min-w-0 items-center gap-2">
             {me.user.image ? (

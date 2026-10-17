@@ -11,6 +11,7 @@ import {
 } from "../features/post-form/PlaceField.tsx";
 import { formatDate, formatTakenOn } from "../lib/format-date.ts";
 import { CopyUrlButton } from "../features/post-detail/CopyUrlButton.tsx";
+import { DeletePost } from "../features/post-detail/DeletePost.tsx";
 import type { Route } from "./+types/post";
 
 export function meta(_: Route.MetaArgs) {
@@ -188,6 +189,7 @@ export default function Post() {
             value={post.visibility}
             onChanged={(visibility) => setPost({ ...post, visibility })}
           />
+          <DeletePost postId={post.id} />
         </section>
       ) : null}
     </main>
