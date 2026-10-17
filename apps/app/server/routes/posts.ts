@@ -22,6 +22,7 @@ const postSchema = z.object({
   visibility: z.enum(VISIBILITIES),
   isOwner: z.boolean(),
   failureReason: z.string().nullable(),
+  author: z.object({ handle: z.string(), name: z.string(), image: z.string().nullable() }),
   title: z.string().nullable(),
   body: z.string().nullable(),
   takenOn: z.string().nullable(),
@@ -39,6 +40,7 @@ const postSchema = z.object({
     })
     .nullable(),
   createdAt: z.date(),
+  publishedAt: z.date().nullable(),
 });
 
 /** 画像の受け取りと投稿 (docs/plan.md の S5a・S5b) */
