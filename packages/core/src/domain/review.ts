@@ -92,23 +92,9 @@ export async function reviewPost(
       at: now,
     });
 
-    const to: Visibility | null =
-      input.decision === "reject" ? "private" : post.status === "held" ? post.visibility : null;
-    // 画像の置き場所を変えるときだけ移す (非公開の投稿を公開するときや、もう非公開の置き場所にあるときは動かさない)
-    const move = to !== null && isPrivateKey(post.imageKeyBase) !== (to === "private");
-    await tx
-      .update(schema.posts)
-      .set({
-        reviewedAt: now,
-        ...(input.decision === "reject" ? { status: "hidden" as const } : {}),
-        ...(input.decision === "approve" && post.status === "held"
-          ? { status: "published" as const, publishedAt: now }
-          : {}),
-        ...(move ? { pendingImageKeyBase: newImageKeyBase(postId, to) } : {}),
-      })
-      .where(eq(schema.posts.id, postId));
-    if (move)
-      await jobs.enqueue("image-move", { postId }, { transaction: tx, singletonKey: postId });
+    if (input.decision === "reject") await hidePostTx(tx, jobs, post, now);
+    else if (post.status === "held") await publishPostTx(tx, jobs, post, now);
+    else await tx.update(schema.posts).set({ reviewedAt: now }).where(eq(schema.posts.id, postId));
   });
 }
 
@@ -126,4 +112,44 @@ export async function readImageForReview(
     post?.width != null ? await storage.get(variantKey(post.imageKeyBase, variant)) : null;
   if (!body) throw new DomainError("not_found", "image not found");
   return { body, contentType: "image/webp" };
+}
+
+type PostRow = typeof schema.posts.$inferSelect;
+
+/** 画像を to の置き場所へ移す。置き場所が変わらないなら何もしない (移すときだけ image-move を積む) */
+async function moveImagesTx(
+  tx: Database,
+  jobs: JobQueue,
+  post: PostRow,
+  to: Visibility,
+): Promise<{ pendingImageKeyBase?: string }> {
+  if (isPrivateKey(post.imageKeyBase) === (to === "private")) return {};
+  await jobs.enqueue("image-move", { postId: post.id }, { transaction: tx, singletonKey: post.id });
+  return { pendingImageKeyBase: newImageKeyBase(post.id, to) };
+}
+
+/**
+ * 運営が非表示にする (ADR-0020、ADR-0021)。hidden にし、画像を非公開の置き場所へ移す。
+ * 呼ぶ側が行を FOR UPDATE し、同じトランザクションで操作を記録する
+ */
+export async function hidePostTx(tx: Database, jobs: JobQueue, post: PostRow, now: Date) {
+  const moved = await moveImagesTx(tx, jobs, post, "private");
+  await tx
+    .update(schema.posts)
+    .set({ status: "hidden", reviewedAt: now, ...moved })
+    .where(eq(schema.posts.id, post.id));
+}
+
+/** 運営が公開する (保留の解除、非表示を戻す)。画像を公開範囲どおりの置き場所へ移す */
+export async function publishPostTx(tx: Database, jobs: JobQueue, post: PostRow, now: Date) {
+  const moved = await moveImagesTx(tx, jobs, post, post.visibility);
+  await tx
+    .update(schema.posts)
+    .set({
+      status: "published",
+      publishedAt: post.publishedAt ?? now,
+      reviewedAt: now,
+      ...moved,
+    })
+    .where(eq(schema.posts.id, post.id));
 }
