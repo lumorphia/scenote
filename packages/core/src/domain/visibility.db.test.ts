@@ -377,4 +377,51 @@ describe.skipIf(!databaseUrl)("post visibility (PostgreSQL)", () => {
       expect(jobs.ofType("image-move")).toEqual([]);
     });
   });
+  // 運営が非表示にした投稿 (S7a-2、ADR-0020)。本人にだけ見え、画像は非公開の置き場所
+  describe("hidden posts", () => {
+    async function hidden(userId: string) {
+      const post = await published(userId, "public");
+      const base = newImageKeyBase(post.id, "private");
+      for (const v of ["display", "thumb"] as const)
+        await storage.put({
+          key: variantKey(base, v),
+          body: new Uint8Array([5]),
+          contentType: "image/webp",
+        });
+      const [row] = await db
+        .update(schema.posts)
+        .set({ status: "hidden", imageKeyBase: base })
+        .where(eq(schema.posts.id, post.id))
+        .returning();
+      return row!;
+    }
+
+    it("hides it from everyone else", async () => {
+      const me = await user();
+      const post = await hidden(me.id);
+      await expect(view(null, post.id)).rejects.toMatchObject({ code: "not_found" });
+    });
+
+    it("shows it to its owner with the image through the app", async () => {
+      const me = await user();
+      const post = await hidden(me.id);
+      expect(await view(me.id, post.id)).toMatchObject({
+        status: "hidden",
+        image: { display: `/api/posts/${post.id}/image/display` },
+      });
+      const image = await readPostImage({ db, storage }, me.id, post.id, "display");
+      expect([...image.body]).toEqual([5]);
+    });
+
+    it("keeps its images in the private place when the owner changes its visibility", async () => {
+      const me = await user();
+      const post = await hidden(me.id);
+      await changeVisibility({ db, jobs }, me.id, post.id, "unlisted");
+      expect(await reload(post.id)).toMatchObject({
+        visibility: "unlisted",
+        imageKeyBase: post.imageKeyBase,
+        pendingImageKeyBase: null,
+      });
+    });
+  });
 });
