@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { BlockedTerms } from "../features/admin/BlockedTerms.tsx";
 import { HiddenPosts } from "../features/admin/HiddenPosts.tsx";
 import { ReportQueue } from "../features/admin/ReportQueue.tsx";
 import { ReviewQueue } from "../features/admin/ReviewQueue.tsx";
@@ -50,6 +51,7 @@ const TABS = [
   { key: "review", label: "確認待ち", panel: ReviewQueue },
   { key: "reports", label: "通報", panel: ReportQueue },
   { key: "hidden", label: "非表示", panel: HiddenPosts },
+  { key: "terms", label: "NG 語", panel: BlockedTerms },
 ] as const;
 
 function AdminTabs() {
