@@ -16,5 +16,6 @@
 | [0012](0012-private-images-through-app.md)    | 非公開の投稿の画像は、アプリが本人にだけ返す                       | Accepted |
 | [0013](0013-shooting-places.md)               | 撮影場所の候補は XIVAPI の街・フィールド・宿屋・ハウジングエリア   | Accepted |
 | [0014](0014-image-moderation.md)              | 投稿の画像は worker が自動で判定し、保留したものは本人にだけ見せる | Accepted |
+| [0015](0015-blocked-words.md)                 | NG 語は画像を送る前に確かめ、サーバーで必ず断る                    | Accepted |
 
 本文中の「prismtone ADR-NNNN」は lumorphia/prismtone の ADR を指す。
