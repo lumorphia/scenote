@@ -14,6 +14,7 @@ import {
   isPrivateKey,
   newImageKeyBase,
   tmpKey,
+  VARIANTS,
   variantKey,
 } from "../storage-keys.ts";
 import type { JobContext, JobDefinition } from "./context.ts";
@@ -77,7 +78,7 @@ export function createImageProcessJob(
           contentType: "image/webp",
           cacheControl: imageCacheControl(base),
         });
-      await db
+      const [updated] = await db
         .update(schema.posts)
         .set({
           status: held ? "held" : "published",
@@ -99,8 +100,15 @@ export function createImageProcessJob(
           failureReason: null,
           publishedAt: held ? null : new Date(),
         })
-        .where(eq(schema.posts.id, postId));
+        .where(eq(schema.posts.id, postId))
+        .returning({ id: schema.posts.id });
       await storage.delete([tmpKey(upload.id)]);
+      // 仕上げている間に投稿が消された (本人の削除、退会の物理削除)。置いた画像を残さない
+      if (!updated) {
+        await storage.delete(VARIANTS.map((v) => variantKey(base, v)));
+        log.info({ postId }, "post deleted while its images were made");
+        return;
+      }
       log.info(
         {
           postId,

@@ -203,6 +203,23 @@ describe.skipIf(!databaseUrl)("image-process job (PostgreSQL)", () => {
     expect(await storage.get(variantKey(base, "display"))).toBeNull();
   });
 
+  // 仕上げている途中で投稿が消されたら (S6d の削除、退会の物理削除)、置いた画像を残さない
+  it("forgets the images it made when the post is deleted meanwhile", async () => {
+    const { postId, base } = await postWith(await webpWithMetadata(), "image/webp");
+    const sharpProcessor = new SharpImageProcessor();
+    const deleting = createImageProcessJob({
+      sniff: (bytes) => sharpProcessor.sniff(bytes),
+      async process(bytes, mime) {
+        const variants = await sharpProcessor.process(bytes, mime);
+        await db.delete(schema.posts).where(eq(schema.posts.id, postId));
+        return variants;
+      },
+    });
+    await deleting.handler({ postId }, ctx);
+    for (const variant of ["display", "thumb"] as const)
+      expect(await storage.get(variantKey(base, variant))).toBeNull();
+  });
+
   it("does nothing for a post that no longer exists", async () => {
     await expect(job.handler({ postId: randomUUID() }, ctx)).resolves.toBeUndefined();
   });
