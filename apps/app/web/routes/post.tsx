@@ -9,6 +9,8 @@ import {
   type PlaceRegion,
   type PlaceValue,
 } from "../features/post-form/PlaceField.tsx";
+import { formatDate, formatTakenOn } from "../lib/format-date.ts";
+import { CopyUrlButton } from "../features/post-detail/CopyUrlButton.tsx";
 import type { Route } from "./+types/post";
 
 export function meta(_: Route.MetaArgs) {
@@ -21,15 +23,21 @@ type OwnPost = {
   visibility: Visibility;
   isOwner: boolean;
   failureReason: string | null;
+  author: { handle: string; name: string; image: string | null };
   title: string | null;
   body: string | null;
   takenOn: string | null;
   tags: { name: string; displayName: string }[];
   place: { id: string | null; regionName: string | null; name: string } | null;
   image: { display: string; width: number; height: number } | null;
+  publishedAt: string | null;
 };
 
-/** 投稿。本人は、派生画像を作っている間は待ち、公開範囲を変えられる (ADR-0004、ADR-0011)。保留した投稿は本人にだけ案内を出す (ADR-0014)。詳細の見た目は S6 で作る */
+/**
+ * 投稿詳細 (要件定義書 13 章)。画像をできるだけ大きく出し、下にタイトル・投稿者・本文・撮影日・撮影場所・投稿日・タグ。
+ * 本人は、派生画像を作っている間は待ち、公開範囲・タグ・撮影場所を変えられる (ADR-0004、ADR-0011)。
+ * 保留した投稿は本人にだけ案内を出す (ADR-0014)
+ */
 export default function Post() {
   const { id } = useParams();
   const [post, setPost] = useState<OwnPost | null>(null);
@@ -65,8 +73,10 @@ export default function Post() {
       </main>
     );
   if (!post) return <p className="p-4 text-sm text-ink-muted">読み込んでいます…</p>;
+  const shareable =
+    post.status === "published" && (post.visibility === "public" || post.visibility === "unlisted");
   return (
-    <main className="mx-auto max-w-4xl space-y-4 p-4 sm:p-8">
+    <main className="mx-auto max-w-6xl space-y-6 p-4 sm:p-8">
       {post.status === "processing" ? (
         <p data-testid="post-processing" className="text-sm text-ink-muted">
           写真を仕上げています。少し待ってください…
@@ -87,53 +97,88 @@ export default function Post() {
         </p>
       ) : null}
       {post.image ? (
-        <img
-          src={post.image.display}
-          width={post.image.width}
-          height={post.image.height}
-          alt={post.title ?? "投稿した写真"}
-          data-testid="post-image"
-          className="h-auto w-full rounded-md"
-        />
+        <figure className="flex justify-center">
+          <img
+            src={post.image.display}
+            width={post.image.width}
+            height={post.image.height}
+            alt={post.title ?? `${post.author.name} さんの写真`}
+            data-testid="post-image"
+            className="h-auto max-h-[85vh] w-auto max-w-full rounded-md object-contain"
+          />
+        </figure>
       ) : null}
-      {post.title ? <h1 className="text-xl font-semibold">{post.title}</h1> : null}
-      {post.takenOn ? <p className="text-sm text-ink-muted">撮影日 {post.takenOn}</p> : null}
-      {post.place ? (
-        <p className="text-sm text-ink-muted" data-testid="post-place">
-          撮影場所 {post.place.regionName ? `${post.place.regionName} / ` : ""}
-          {post.place.name}
-        </p>
-      ) : null}
-      {post.body ? <p className="whitespace-pre-wrap">{post.body}</p> : null}
-      {post.tags.length ? (
-        <ul className="flex flex-wrap gap-2 text-sm" aria-label="タグ" data-testid="post-tags">
-          {post.tags.map((tag) => (
-            <li key={tag.name} className="rounded-full bg-surface-muted px-3 py-1">
-              #{tag.displayName}
-            </li>
-          ))}
-        </ul>
-      ) : null}
+
+      <article className="mx-auto max-w-3xl space-y-4">
+        {post.title ? <h1 className="text-2xl font-semibold">{post.title}</h1> : null}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p data-testid="post-author" className="flex min-w-0 items-center gap-2 text-sm">
+            {post.author.image ? (
+              <img src={post.author.image} alt="" width={28} height={28} className="rounded-full" />
+            ) : null}
+            <span className="truncate">{post.author.name}</span>
+            <span className="text-ink-muted">@{post.author.handle}</span>
+          </p>
+          {shareable ? <CopyUrlButton /> : null}
+        </div>
+        {post.body ? <p className="whitespace-pre-wrap leading-relaxed">{post.body}</p> : null}
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+          {post.takenOn ? (
+            <>
+              <dt className="text-ink-muted">撮影日</dt>
+              <dd data-testid="post-taken-on">{formatTakenOn(post.takenOn)}</dd>
+            </>
+          ) : null}
+          {post.place ? (
+            <>
+              <dt className="text-ink-muted">撮影場所</dt>
+              <dd data-testid="post-place">
+                {post.place.regionName ? `${post.place.regionName} / ` : ""}
+                {post.place.name}
+              </dd>
+            </>
+          ) : null}
+          {post.publishedAt ? (
+            <>
+              <dt className="text-ink-muted">投稿日</dt>
+              <dd>
+                <time data-testid="post-published-on" dateTime={post.publishedAt}>
+                  {formatDate(post.publishedAt)}
+                </time>
+              </dd>
+            </>
+          ) : null}
+        </dl>
+        {post.tags.length ? (
+          <ul className="flex flex-wrap gap-2 text-sm" aria-label="タグ" data-testid="post-tags">
+            {post.tags.map((tag) => (
+              <li key={tag.name} className="rounded-full bg-surface-muted px-3 py-1">
+                #{tag.displayName}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </article>
+
       {post.isOwner ? (
-        <PlaceEditor
-          postId={post.id}
-          value={post.place}
-          onSaved={(place) => setPost({ ...post, place })}
-        />
-      ) : null}
-      {post.isOwner ? (
-        <TagsEditor
-          postId={post.id}
-          value={post.tags.map((t) => t.displayName)}
-          onSaved={(tags) => setPost({ ...post, tags })}
-        />
-      ) : null}
-      {post.isOwner ? (
-        <VisibilityEditor
-          postId={post.id}
-          value={post.visibility}
-          onChanged={(visibility) => setPost({ ...post, visibility })}
-        />
+        <section className="mx-auto max-w-3xl space-y-4 border-t border-line-soft pt-6">
+          <h2 className="text-lg font-semibold">投稿の設定</h2>
+          <PlaceEditor
+            postId={post.id}
+            value={post.place}
+            onSaved={(place) => setPost({ ...post, place })}
+          />
+          <TagsEditor
+            postId={post.id}
+            value={post.tags.map((t) => t.displayName)}
+            onSaved={(tags) => setPost({ ...post, tags })}
+          />
+          <VisibilityEditor
+            postId={post.id}
+            value={post.visibility}
+            onChanged={(visibility) => setPost({ ...post, visibility })}
+          />
+        </section>
       ) : null}
     </main>
   );

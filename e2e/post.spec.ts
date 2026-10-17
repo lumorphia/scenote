@@ -136,7 +136,7 @@ test("a shooting place chosen from the list appears on the post", async ({ page 
     .getByRole("combobox", { name: "場所", exact: true })
     .selectOption({ label: "中央ラノシア" });
   await page.getByRole("button", { name: "投稿する" }).click();
-  await expect(page.getByTestId("post-place")).toHaveText("撮影場所 ラノシア / 中央ラノシア");
+  await expect(page.getByTestId("post-place")).toHaveText("ラノシア / 中央ラノシア");
 });
 
 test("a shooting place not in the list can be written", async ({ page }) => {
@@ -145,7 +145,7 @@ test("a shooting place not in the list can be written", async ({ page }) => {
   await page.getByRole("button", { name: "候補に無い場所を書く" }).click();
   await page.getByLabel("場所の名前").fill("テスト_ゴールドソーサー");
   await page.getByRole("button", { name: "投稿する" }).click();
-  await expect(page.getByTestId("post-place")).toHaveText("撮影場所 テスト_ゴールドソーサー");
+  await expect(page.getByTestId("post-place")).toHaveText("テスト_ゴールドソーサー");
 });
 
 test("the owner can change the shooting place", async ({ page }) => {
@@ -156,7 +156,7 @@ test("the owner can change the shooting place", async ({ page }) => {
     .getByRole("combobox", { name: "場所", exact: true })
     .selectOption({ label: "グリダニア：新市街" });
   await page.getByRole("button", { name: "撮影場所を保存する" }).click();
-  await expect(page.getByTestId("post-place")).toHaveText("撮影場所 黒衣森 / グリダニア：新市街");
+  await expect(page.getByTestId("post-place")).toHaveText("黒衣森 / グリダニア：新市街");
 });
 
 // 自動モデレーション (docs/plan.md の S5f、ADR-0014)。E2E の判定器は色で決める (赤一色を保留にする)

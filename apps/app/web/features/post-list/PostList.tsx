@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { formatDate } from "../../lib/format-date.ts";
 import { columnCountFor, layoutColumns } from "./columns.ts";
 
 export type PostCard = {
@@ -12,13 +13,6 @@ export type PostCard = {
   tags: { name: string; displayName: string }[];
   publishedAt: string;
 };
-
-const dateFormat = new Intl.DateTimeFormat("ja-JP", {
-  year: "numeric",
-  month: "numeric",
-  day: "numeric",
-  timeZone: "Asia/Tokyo",
-});
 
 /** 画面の幅に合わせた列の数。SSR とハイドレーションの直後は 2 列 */
 function useColumnCount(): number {
@@ -71,7 +65,7 @@ function Card({ item }: { item: PostCard }) {
           {item.author.name} <span>@{item.author.handle}</span>
         </p>
         <p>
-          <time dateTime={item.publishedAt}>{dateFormat.format(new Date(item.publishedAt))}</time>
+          <time dateTime={item.publishedAt}>{formatDate(item.publishedAt)}</time>
           {item.tags.length ? (
             <span className="ml-2">{item.tags.map((t) => `#${t.displayName}`).join(" ")}</span>
           ) : null}
