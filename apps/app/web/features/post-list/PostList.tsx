@@ -15,7 +15,7 @@ export type PostCard = {
 };
 
 /** 画面の幅に合わせた列の数。SSR とハイドレーションの直後は 2 列 */
-function useColumnCount(): number {
+export function useColumnCount(): number {
   const [count, setCount] = useState(2);
   useEffect(() => {
     const update = () => setCount(columnCountFor(window.innerWidth));

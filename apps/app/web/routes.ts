@@ -8,4 +8,5 @@ export default [
   route("posts/:id", "routes/post.tsx"),
   route("tags/:name", "routes/tag.tsx"),
   route("u/:handle", "routes/user.tsx"),
+  route("me", "routes/me.tsx"),
 ] satisfies RouteConfig;
