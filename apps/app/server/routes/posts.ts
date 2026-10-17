@@ -19,7 +19,12 @@ import {
   MAX_PAGE_SIZE,
 } from "@lumorphia-scenote/core/domain/browse";
 import { deletePost, listMyPosts } from "@lumorphia-scenote/core/domain/my-posts";
-import { withErrors } from "../schemas/error.ts";
+import {
+  createReport,
+  MAX_REPORT_DETAIL_LENGTH,
+  REPORT_REASONS,
+} from "@lumorphia-scenote/core/domain/reports";
+import { errorSchema, withErrors } from "../schemas/error.ts";
 
 const postSchema = z.object({
   id: z.string(),
@@ -305,6 +310,32 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (req, reply) => {
       await deletePost({ db: app.db, jobs: app.jobs }, req.user!.id, postId(req.params.id));
+      return reply.code(204).send(null);
+    },
+  );
+
+  // 通報 (S7b-1、ADR-0021)。ログインが要る。見えている他人の投稿だけ
+  app.post(
+    "/posts/:id/reports",
+    {
+      schema: {
+        tags: ["posts"],
+        summary: "投稿を通報する",
+        params: z.object({ id: z.string() }),
+        body: z.object({
+          reason: z.enum(REPORT_REASONS),
+          detail: z
+            .string()
+            .max(MAX_REPORT_DETAIL_LENGTH * 4)
+            .nullish(),
+        }),
+        response: withErrors({ 204: z.null(), 409: errorSchema }),
+      },
+      config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+      preValidation: [app.requireAuth],
+    },
+    async (req, reply) => {
+      await createReport({ db: app.db }, req.user!.id, postId(req.params.id), req.body);
       return reply.code(204).send(null);
     },
   );
