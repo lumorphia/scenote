@@ -31,11 +31,18 @@ test("the post form asks for consent from others in the photo", async ({ page })
   await expect(page.getByText("他の人が写っている場合は、本人の了承を得てください")).toBeVisible();
 });
 
-test("a visitor logs in from the post form and keeps the photo", async ({ page }) => {
+test("a visitor logs in from the post form, agrees to the terms and keeps the photo", async ({
+  page,
+}) => {
   const user = lumorphiaUser();
   await sendToPostForm(page);
   await approveLumorphia(page, user, LUMORPHIA);
   await page.getByRole("link", { name: "ログインして投稿する" }).click();
+  // 初めての人は同意の画面を通ってから、投稿画面に戻る (ADR-0023)
+  await expect(page).toHaveURL(/\/welcome\?next=%2Fpost%2Fnew$/);
+  await page.getByLabel("15 歳以上です").check();
+  await page.getByLabel("利用規約とプライバシーポリシーに同意します").check();
+  await page.getByRole("button", { name: "同意して始める" }).click();
   await expect(page).toHaveURL(/\/post\/new$/);
   await expect(page.getByTestId("post-preview")).toBeVisible();
   await page.getByRole("button", { name: "投稿する" }).click();

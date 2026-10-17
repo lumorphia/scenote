@@ -11,6 +11,7 @@ import {
 import type { Route } from "./+types/root";
 import "./app.css";
 import { SiteHeader } from "./components/site-header.tsx";
+import { SiteFooter } from "./components/site-footer.tsx";
 
 /** 全ルート共通。版と Sentry の設定。ログインの状態はヘッダーが /api/me から読む */
 export async function loader() {
@@ -39,6 +40,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <body className="min-h-dvh bg-surface text-ink antialiased">
         <SiteHeader />
         {children}
+        <SiteFooter />
         <ScrollRestoration />
         <Scripts />
       </body>
