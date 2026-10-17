@@ -264,4 +264,87 @@ describe.skipIf(!url)("the admin API (PostgreSQL)", () => {
         ).toBe(404);
     });
   });
+  // NG 語の辞書 (S7b-2、ADR-0022)
+  describe("blocked terms", () => {
+    const base = () => new URL(app.env.AUTH_BASE_URL);
+    const call = (
+      cookie: string,
+      method: "POST" | "PATCH" | "DELETE",
+      url: string,
+      payload?: object,
+    ) =>
+      app.inject({
+        method,
+        url,
+        headers: {
+          cookie,
+          origin: base().origin,
+          host: base().host,
+          ...(payload ? { "content-type": "application/json" } : {}),
+        },
+        ...(payload ? { payload } : {}),
+      });
+    const admin = () => loginWithLumorphia(app, mock, lumorphiaUser({ sub: ADMIN_SUB }));
+    type Terms = { items: { id: string; term: string; enabled: boolean }[] };
+    const list = (cookie: string, q = "") =>
+      app
+        .inject({ method: "GET", url: `/api/admin/blocked-terms${q}`, headers: { cookie } })
+        .then((r) => r.json() as Terms);
+
+    it("adds a word that then stops a post, and removes it", async () => {
+      const { cookie } = await admin();
+      await app.db.delete(schema.blockedTerms);
+      const added = await call(cookie, "POST", "/api/admin/blocked-terms", {
+        term: "テスト管理語",
+        match: "contains",
+        reason: "テスト_理由",
+      });
+      expect(added.statusCode).toBe(201);
+      const check = await call(cookie, "POST", "/api/posts/check-text", {
+        title: "テスト管理語です",
+      });
+      expect(check.json()).toEqual({ blocked: "title" });
+      const [term] = (await list(cookie)).items;
+      const off = await call(cookie, "PATCH", `/api/admin/blocked-terms/${term!.id}`, {
+        enabled: false,
+        reason: "テスト_理由",
+      });
+      expect(off.statusCode).toBe(204);
+      expect((await list(cookie)).items[0]!.enabled).toBe(false);
+      const removed = await call(cookie, "DELETE", `/api/admin/blocked-terms/${term!.id}`, {
+        reason: "テスト_理由",
+      });
+      expect(removed.statusCode).toBe(204);
+      expect((await list(cookie)).items).toEqual([]);
+    });
+
+    it("imports a word list", async () => {
+      const { cookie } = await admin();
+      await app.db.delete(schema.blockedTerms);
+      const res = await call(cookie, "POST", "/api/admin/blocked-terms/import", {
+        text: "テスト一\nテスト二\n",
+        match: "exact",
+        source: "test-dictionary",
+        reason: "テスト_理由",
+      });
+      expect(res.json()).toEqual({ added: 2, skipped: 0 });
+    });
+
+    it("keeps the dictionary from everyone else", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      expect(
+        (await app.inject({ method: "GET", url: "/api/admin/blocked-terms", headers: { cookie } }))
+          .statusCode,
+      ).toBe(404);
+      expect(
+        (
+          await call(cookie, "POST", "/api/admin/blocked-terms", {
+            term: "テスト語",
+            match: "contains",
+            reason: "テスト",
+          })
+        ).statusCode,
+      ).toBe(404);
+    });
+  });
 });

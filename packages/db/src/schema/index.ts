@@ -6,3 +6,4 @@ export * from "./tags.ts";
 export * from "./places.ts";
 export * from "./admin.ts";
 export * from "./reports.ts";
+export * from "./blocked-terms.ts";
