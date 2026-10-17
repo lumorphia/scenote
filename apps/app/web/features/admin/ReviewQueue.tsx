@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
 import { formatDate } from "../../lib/format-date.ts";
 import { visibilityLabel, type Visibility } from "../post-form/visibility.ts";
+import { DecisionForm, postAdmin } from "./DecisionForm.tsx";
+import { useAdminList } from "./useAdminList.ts";
 
 export type ReviewItem = {
   id: string;
@@ -20,26 +21,7 @@ const STATE_LABEL = { held: "保留 (公開していない)", flagged: "要確�
 
 /** 確認待ちの投稿 (S7a-2、ADR-0020)。公開するか非表示にするかを、理由を書いて決める */
 export function ReviewQueue() {
-  const [items, setItems] = useState<ReviewItem[] | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    void fetch("/api/admin/reviews", { credentials: "same-origin" })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`reviews failed: ${res.status}`);
-        return ((await res.json()) as { items: ReviewItem[] }).items;
-      })
-      .then((data) => {
-        if (active) setItems(data);
-      })
-      .catch(() => {
-        if (active) setFailed(true);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const { items, failed, remove } = useAdminList<ReviewItem>("/api/admin/reviews");
 
   if (failed)
     return (
@@ -50,45 +32,20 @@ export function ReviewQueue() {
   if (!items) return <p className="text-sm text-ink-muted">読み込んでいます…</p>;
   return (
     <section className="space-y-4">
-      <h2 className="text-lg font-semibold">確認待ち ({items.length})</h2>
       {items.length === 0 ? (
         <p className="text-sm text-ink-muted">確認を待っている投稿はありません。</p>
       ) : null}
       {items.map((item) => (
-        <ReviewCard
-          key={item.id}
-          item={item}
-          onDone={() => setItems((before) => (before ?? []).filter((i) => i.id !== item.id))}
-        />
+        <ReviewCard key={item.id} item={item} onDone={() => remove(item.id)} />
       ))}
     </section>
   );
 }
 
 function ReviewCard({ item, onDone }: { item: ReviewItem; onDone: () => void }) {
-  const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const state = item.status === "held" ? "held" : "flagged";
-
-  async function decide(decision: "approve" | "reject") {
-    setBusy(true);
-    setMessage(null);
-    const res = await fetch(`/api/admin/posts/${encodeURIComponent(item.id)}/review`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "same-origin",
-      body: JSON.stringify({ decision, reason }),
-    }).catch(() => null);
-    setBusy(false);
-    if (res?.ok) onDone();
-    else if (res?.status === 409) {
-      setMessage("ほかの操作で、もう確認待ちではなくなりました。");
-      onDone();
-    } else setMessage("決められませんでした。もう一度お試しください。");
-  }
-
-  const reasonId = `reason-${item.id}`;
+  const review = (decision: "approve" | "reject") => (reason: string) =>
+    postAdmin(`/api/admin/posts/${encodeURIComponent(item.id)}/review`, { decision, reason });
   return (
     <article className="grid gap-4 rounded-md border border-line-soft p-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
       <img
@@ -118,41 +75,13 @@ function ReviewCard({ item, onDone }: { item: ReviewItem; onDone: () => void }) 
               : "なし"}
           </dd>
         </dl>
-        <label htmlFor={reasonId} className="block space-y-1">
-          <span className="font-semibold">理由</span>
-        </label>
-        <textarea
-          id={reasonId}
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          maxLength={500}
-          rows={2}
-          placeholder="記録に残ります。個人の情報は書かないでください"
-          className="w-full rounded-md border border-line bg-surface px-2 py-1"
+        <DecisionForm
+          decisions={[
+            { label: "公開する", primary: true, run: review("approve") },
+            { label: "非表示にする", run: review("reject") },
+          ]}
+          onDone={onDone}
         />
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => void decide("approve")}
-            disabled={busy || !reason.trim()}
-            className="rounded-md bg-accent px-3 py-1 font-semibold text-accent-ink hover:bg-accent-strong disabled:opacity-60"
-          >
-            公開する
-          </button>
-          <button
-            type="button"
-            onClick={() => void decide("reject")}
-            disabled={busy || !reason.trim()}
-            className="rounded-md border border-line px-3 py-1 hover:bg-surface-hover disabled:opacity-60"
-          >
-            非表示にする
-          </button>
-        </div>
-        {message ? (
-          <p role="alert" className="text-sm">
-            {message}
-          </p>
-        ) : null}
       </div>
     </article>
   );

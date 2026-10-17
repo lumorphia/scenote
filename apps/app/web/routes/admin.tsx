@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { HiddenPosts } from "../features/admin/HiddenPosts.tsx";
+import { ReportQueue } from "../features/admin/ReportQueue.tsx";
 import { ReviewQueue } from "../features/admin/ReviewQueue.tsx";
 import type { Route } from "./+types/admin";
 
@@ -8,7 +10,7 @@ export function meta(_: Route.MetaArgs) {
 
 /**
  * 運営の画面 (S7a、ADR-0019)。許可リストの運営者だけ。それ以外の人には、ページが無いのと同じに見せる。
- * 保留・要確認の投稿の確認 (S7a-2)。通報は S7b で足す
+ * 保留・要確認の投稿の確認 (S7a-2)、通報と非表示の投稿 (S7b-1)
  */
 export default function Admin() {
   const [state, setState] = useState<"loading" | "ok" | "missing">("loading");
@@ -39,7 +41,43 @@ export default function Admin() {
       <p className="text-sm text-ink-muted">
         ここでの操作は記録に残ります。理由には、利用者の名前やメールなどの個人の情報を書かないでください。
       </p>
-      <ReviewQueue />
+      <AdminTabs />
     </main>
+  );
+}
+
+const TABS = [
+  { key: "review", label: "確認待ち", panel: ReviewQueue },
+  { key: "reports", label: "通報", panel: ReportQueue },
+  { key: "hidden", label: "非表示", panel: HiddenPosts },
+] as const;
+
+function AdminTabs() {
+  const [current, setCurrent] = useState<(typeof TABS)[number]["key"]>("review");
+  const Panel = TABS.find((t) => t.key === current)!.panel;
+  return (
+    <div className="space-y-4">
+      <div role="tablist" aria-label="運営の作業" className="flex gap-1 border-b border-line-soft">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            role="tab"
+            aria-selected={tab.key === current}
+            onClick={() => setCurrent(tab.key)}
+            className={`-mb-px border-b-2 px-3 py-2 text-sm ${
+              tab.key === current
+                ? "border-accent font-semibold"
+                : "border-transparent text-ink-muted hover:text-ink"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <div role="tabpanel">
+        <Panel />
+      </div>
+    </div>
   );
 }
