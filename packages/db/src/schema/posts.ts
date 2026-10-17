@@ -51,9 +51,10 @@ export const posts = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     /**
      * processing: 派生画像を作っている。published: 見られる。failed: 画像を受け付けなかった。
-     * held: 自動モデレーションで保留した。本人にだけ見え、画像は非公開の置き場所にある (ADR-0014)
+     * held: 自動モデレーションで保留した。本人にだけ見え、画像は非公開の置き場所にある (ADR-0014)。
+     * hidden: 運営が非表示にした。本人にだけ見え、画像は非公開の置き場所にある (ADR-0020)
      */
-    status: text("status", { enum: ["processing", "published", "failed", "held"] })
+    status: text("status", { enum: ["processing", "published", "failed", "held", "hidden"] })
       .notNull()
       .default("processing"),
     /** 公開範囲 (ADR-0004)。既定は公開 */
@@ -92,6 +93,8 @@ export const posts = pgTable(
     moderationScore: real("moderation_score"),
     moderationLabels: jsonb("moderation_labels").$type<Record<string, number>>(),
     moderatedAt: timestamp("moderated_at", { withTimezone: true }),
+    /** 運営が確かめた日時 (ADR-0020)。保留・要確認を確かめたら入る。誰がなぜは admin_audit_logs */
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     /** 受け付けなかった理由 (@lumorphia/media の ImageRejectedError の reason など) */
     failureReason: text("failure_reason"),
     publishedAt: timestamp("published_at", { withTimezone: true }),

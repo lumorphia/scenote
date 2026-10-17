@@ -15,7 +15,7 @@ import { assertNoBlockedText } from "./blocked-text.ts";
 import { replacePostTags, tagsOf, validateTags, type TagInput } from "./tags.ts";
 import { isOfferedPlace } from "./places.ts";
 
-export type PostStatus = "processing" | "published" | "failed" | "held";
+export type PostStatus = "processing" | "published" | "failed" | "held" | "hidden";
 export const VISIBILITIES = ["public", "unlisted", "private"] as const;
 export type Visibility = (typeof VISIBILITIES)[number];
 
@@ -205,9 +205,15 @@ export type PostView = {
   publishedAt: Date | null;
 };
 
-/** 派生画像ができている (保留した投稿にも、本人に見せる画像はある。ADR-0014) */
+/**
+ * 画像を公開範囲によらず非公開の置き場所に置く状態。保留 (ADR-0014) と、運営が非表示にしたもの (ADR-0020)。
+ * どちらも本人にだけ見える
+ */
+export const keepsImagesPrivate = (status: PostStatus) => status === "held" || status === "hidden";
+
+/** 派生画像ができている (保留・非表示の投稿にも、本人に見せる画像はある) */
 const hasImages = (post: Pick<PostRow, "status">) =>
-  post.status === "published" || post.status === "held";
+  post.status === "published" || keepsImagesPrivate(post.status);
 
 /** 画像の URL。非公開の置き場所 (移している途中も含む) にあれば、アプリの中継を指す (ADR-0012) */
 export function imageUrl(
@@ -274,8 +280,8 @@ export async function changeVisibility(
       .for("update");
     if (!post) throw new DomainError("not_found", "post not found");
     if (post.visibility === to) return;
-    // 保留した投稿の画像は、範囲によらず非公開の置き場所に置いたまま (ADR-0014)
-    if (post.status === "held") {
+    // 保留・非表示の投稿の画像は、範囲によらず非公開の置き場所に置いたまま (ADR-0014、ADR-0020)
+    if (keepsImagesPrivate(post.status)) {
       await tx.update(schema.posts).set({ visibility: to }).where(eq(schema.posts.id, postId));
       return;
     }
