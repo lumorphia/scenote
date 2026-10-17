@@ -26,6 +26,8 @@ export async function loginWithLumorphia(
   app: FastifyInstance,
   mock: MockIssuer,
   user: MockLumorphiaUser,
+  /** 既定で規約に同意まで済ませる (S7d、ADR-0023)。同意の流れを確かめるときだけ false */
+  { consent = true }: { consent?: boolean } = {},
 ): Promise<{ cookie: string; status: number; location: string | undefined }> {
   const base = new URL(app.env.AUTH_BASE_URL);
   const signIn = await app.inject({
@@ -51,5 +53,21 @@ export async function loginWithLumorphia(
     headers: { cookie, host: base.host },
   });
   cookie = mergeCookies(cookie, res.headers["set-cookie"]);
+  if (consent && res.statusCode < 400) {
+    const accepted = await app.inject({
+      method: "POST",
+      url: "/api/me/consent",
+      headers: {
+        cookie,
+        origin: base.origin,
+        host: base.host,
+        "content-type": "application/json",
+      },
+      payload: { ageConfirmed: true, termsAccepted: true },
+    });
+    // ログインに失敗した (Cookie が無い) ときは、同意も 401 になる。呼ぶ側が status で確かめる
+    if (accepted.statusCode !== 204 && accepted.statusCode !== 401)
+      throw new Error(`consent failed: ${accepted.statusCode} ${accepted.body}`);
+  }
   return { cookie, status: res.statusCode, location: res.headers.location as string | undefined };
 }

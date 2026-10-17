@@ -75,7 +75,7 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
         }),
       },
       config: { rateLimit: { max: 30, timeWindow: "1 minute" } },
-      preValidation: [app.requireAuth],
+      preValidation: [app.requireConsent],
     },
     async (req, reply) => {
       const grant = await createUpload(
@@ -108,7 +108,7 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
         response: withErrors({ 201: z.object({ postId: z.string() }) }),
       },
       config: { rateLimit: { max: 30, timeWindow: "1 minute" } },
-      preValidation: [app.requireAuth],
+      preValidation: [app.requireConsent],
     },
     async (req, reply) => {
       const created = await createPost(
@@ -138,7 +138,7 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
         }),
       },
       config: { rateLimit: { max: 60, timeWindow: "1 minute" } },
-      preValidation: [app.requireAuth],
+      preValidation: [app.requireConsent],
     },
     async (req) => ({ blocked: await checkText(app.db, req.body) }),
   );
@@ -278,7 +278,7 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
         response: withErrors({ 204: z.null() }),
       },
       config: { rateLimit: { max: 30, timeWindow: "1 minute" } },
-      preValidation: [app.requireAuth],
+      preValidation: [app.requireConsent],
     },
     async (req, reply) => {
       const id = postId(req.params.id);
@@ -332,7 +332,7 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
         response: withErrors({ 204: z.null(), 409: errorSchema }),
       },
       config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
-      preValidation: [app.requireAuth],
+      preValidation: [app.requireConsent],
     },
     async (req, reply) => {
       await createReport({ db: app.db }, req.user!.id, postId(req.params.id), req.body);
