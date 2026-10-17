@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ReviewQueue } from "../features/admin/ReviewQueue.tsx";
 import type { Route } from "./+types/admin";
 
 export function meta(_: Route.MetaArgs) {
@@ -7,7 +8,7 @@ export function meta(_: Route.MetaArgs) {
 
 /**
  * 運営の画面 (S7a、ADR-0019)。許可リストの運営者だけ。それ以外の人には、ページが無いのと同じに見せる。
- * 保留・要確認の投稿の確認は S7a-2、通報は S7b で足す
+ * 保留・要確認の投稿の確認 (S7a-2)。通報は S7b で足す
  */
 export default function Admin() {
   const [state, setState] = useState<"loading" | "ok" | "missing">("loading");
@@ -38,6 +39,7 @@ export default function Admin() {
       <p className="text-sm text-ink-muted">
         ここでの操作は記録に残ります。理由には、利用者の名前やメールなどの個人の情報を書かないでください。
       </p>
+      <ReviewQueue />
     </main>
   );
 }

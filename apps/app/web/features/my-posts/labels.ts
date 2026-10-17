@@ -1,4 +1,4 @@
-export type PostStatus = "processing" | "published" | "failed" | "held";
+export type PostStatus = "processing" | "published" | "failed" | "held" | "hidden";
 
 /** マイページで、公開されていない投稿に付ける札。公開されたものは null */
 export function statusLabel(status: PostStatus): string | null {
@@ -9,6 +9,8 @@ export function statusLabel(status: PostStatus): string | null {
       return "受け付けられませんでした";
     case "held":
       return "確認中";
+    case "hidden":
+      return "非表示";
     case "published":
       return null;
   }

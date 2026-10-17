@@ -32,7 +32,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 
 type OwnPost = {
   id: string;
-  status: "processing" | "published" | "failed" | "held";
+  status: "processing" | "published" | "failed" | "held" | "hidden";
   visibility: Visibility;
   isOwner: boolean;
   failureReason: string | null;
@@ -107,6 +107,11 @@ export default function Post() {
         <p data-testid="post-held" role="status" className="text-sm">
           運営が、FF14
           の画面か、安全上の問題がないかを確認しています。確認が終わるまで、ほかの人には表示されません。
+        </p>
+      ) : null}
+      {post.status === "hidden" ? (
+        <p data-testid="post-hidden" role="status" className="text-sm">
+          この投稿は運営により非表示になっています。ほかの人には表示されません。
         </p>
       ) : null}
       {post.image ? (
