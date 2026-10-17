@@ -22,5 +22,6 @@
 | [0018](0018-ogp.md)                           | OGP の画像は派生画像のジョブで作り、meta は load context で SSR する       | Accepted |
 | [0019](0019-admin.md)                         | 管理画面は Access と許可リストで二重に守り、操作を記録する                 | Accepted |
 | [0020](0020-review.md)                        | 保留・要確認の投稿は運営が理由を書いて公開か非表示に決める                 | Accepted |
+| [0021](0021-reports.md)                       | 通報はログインした人から受け、運営は投稿を非表示にするか通報を退ける       | Accepted |
 
 本文中の「prismtone ADR-NNNN」は lumorphia/prismtone の ADR を指す。
