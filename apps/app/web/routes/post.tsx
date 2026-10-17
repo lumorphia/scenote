@@ -116,8 +116,13 @@ export default function Post() {
             {post.author.image ? (
               <img src={post.author.image} alt="" width={28} height={28} className="rounded-full" />
             ) : null}
-            <span className="truncate">{post.author.name}</span>
-            <span className="text-ink-muted">@{post.author.handle}</span>
+            <Link
+              to={`/u/${encodeURIComponent(post.author.handle)}`}
+              className="min-w-0 hover:underline"
+            >
+              <span className="truncate">{post.author.name}</span>
+              <span className="ml-2 text-ink-muted">@{post.author.handle}</span>
+            </Link>
           </p>
           {shareable ? <CopyUrlButton /> : null}
         </div>
@@ -152,8 +157,13 @@ export default function Post() {
         {post.tags.length ? (
           <ul className="flex flex-wrap gap-2 text-sm" aria-label="タグ" data-testid="post-tags">
             {post.tags.map((tag) => (
-              <li key={tag.name} className="rounded-full bg-surface-muted px-3 py-1">
-                #{tag.displayName}
+              <li key={tag.name}>
+                <Link
+                  to={`/tags/${encodeURIComponent(tag.name)}`}
+                  className="inline-block rounded-full bg-surface-muted px-3 py-1 hover:bg-surface-hover"
+                >
+                  #{tag.displayName}
+                </Link>
               </li>
             ))}
           </ul>
