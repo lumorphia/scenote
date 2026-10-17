@@ -16,7 +16,7 @@ export function meta(_: Route.MetaArgs) {
 
 type OwnPost = {
   id: string;
-  status: "processing" | "published" | "failed";
+  status: "processing" | "published" | "failed" | "held";
   visibility: Visibility;
   isOwner: boolean;
   failureReason: string | null;
@@ -28,7 +28,7 @@ type OwnPost = {
   image: { display: string; width: number; height: number } | null;
 };
 
-/** 投稿。本人は、派生画像を作っている間は待ち、公開範囲を変えられる (ADR-0004、ADR-0011)。詳細の見た目は S6 で作る */
+/** 投稿。本人は、派生画像を作っている間は待ち、公開範囲を変えられる (ADR-0004、ADR-0011)。保留した投稿は本人にだけ案内を出す (ADR-0014)。詳細の見た目は S6 で作る */
 export default function Post() {
   const { id } = useParams();
   const [post, setPost] = useState<OwnPost | null>(null);
@@ -77,6 +77,12 @@ export default function Post() {
           <Link to="/edit" className="ml-2 underline">
             現像する
           </Link>
+        </p>
+      ) : null}
+      {post.status === "held" ? (
+        <p data-testid="post-held" role="status" className="text-sm">
+          運営が、FF14
+          の画面か、安全上の問題がないかを確認しています。確認が終わるまで、ほかの人には表示されません。
         </p>
       ) : null}
       {post.image ? (
