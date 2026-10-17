@@ -5,7 +5,7 @@ import { createDatabase, schema, type Database } from "@lumorphia-scenote/db";
 import { newImageKeyBase, variantKey } from "../storage-keys.ts";
 import { replacePostTags, validateTags } from "./tags.ts";
 import { canView, VISIBILITIES, type PostStatus, type Visibility } from "./posts.ts";
-import { listPublicPosts } from "./browse.ts";
+import { getPublicProfile, listPublicPosts } from "./browse.ts";
 
 const databaseUrl = process.env.DATABASE_URL;
 const IMAGE_BASE = "https://img.example.invalid";
@@ -73,7 +73,7 @@ describe.skipIf(!databaseUrl)("listing public posts (PostgreSQL)", () => {
     if (fields.tags) await replacePostTags(db, id, validateTags(fields.tags));
     return row!;
   }
-  const list = (input: { cursor?: string; limit?: number } = {}) =>
+  const list = (input: { cursor?: string; limit?: number; tag?: string; author?: string } = {}) =>
     listPublicPosts({ db, imageBaseUrl: IMAGE_BASE }, input);
   const at = (minutes: number) => new Date(Date.UTC(2026, 9, 1, 12, minutes));
 
@@ -176,5 +176,78 @@ describe.skipIf(!databaseUrl)("listing public posts (PostgreSQL)", () => {
     const row = await post(me.id);
     await db.update(schema.posts).set({ visibility: "private" }).where(eq(schema.posts.id, row.id));
     expect((await list()).items).toEqual([]);
+  });
+  // タグ検索 (S6c、要件定義書 11 章)。出るのは公開の投稿だけ
+  describe("by tag", () => {
+    it("lists the public posts with the tag", async () => {
+      const me = await user();
+      const tagged = await post(me.id, { tags: ["夕焼け"] });
+      await post(me.id, { tags: ["夜景"] });
+      expect((await list({ tag: "夕焼け" })).items.map((i) => i.id)).toEqual([tagged.id]);
+    });
+
+    it("finds the tag however it is written", async () => {
+      const me = await user();
+      const tagged = await post(me.id, { tags: ["Gold Saucer"] });
+      await post(me.id);
+      expect((await list({ tag: "#ｇｏｌｄ  saucer" })).items.map((i) => i.id)).toEqual([
+        tagged.id,
+      ]);
+    });
+
+    it("leaves out tagged posts that are not public", async () => {
+      const me = await user();
+      await post(me.id, { tags: ["夕焼け"], visibility: "unlisted" });
+      await post(me.id, { tags: ["夕焼け"], status: "held" });
+      expect((await list({ tag: "夕焼け" })).items).toEqual([]);
+    });
+
+    it("pages within the tag", async () => {
+      const me = await user();
+      for (let i = 0; i < 3; i++) await post(me.id, { tags: ["旅"], publishedAt: at(i) });
+      await post(me.id, { publishedAt: at(9) });
+      const first = await list({ tag: "旅", limit: 2 });
+      const second = await list({ tag: "旅", limit: 2, cursor: first.nextCursor! });
+      expect(first.items.length + second.items.length).toBe(3);
+      expect(second.nextCursor).toBeNull();
+    });
+
+    it("finds nothing for a tag nobody uses", async () => {
+      expect((await list({ tag: "テスト_無いタグ" })).items).toEqual([]);
+    });
+  });
+
+  // 利用者のページ (S6c、要件定義書 9.1)。出るのは公開の投稿だけ
+  describe("by author", () => {
+    it("lists the public posts of one person", async () => {
+      const me = await user();
+      const other = await user();
+      const mine = await post(me.id);
+      await post(other.id);
+      await post(me.id, { visibility: "private" });
+      expect((await list({ author: me.handle })).items.map((i) => i.id)).toEqual([mine.id]);
+    });
+
+    it("shows a person's name and icon", async () => {
+      const me = await user();
+      expect(await getPublicProfile(db, me.handle)).toEqual({
+        handle: me.handle,
+        name: "テスト_利用者",
+        image: me.image,
+      });
+    });
+
+    it("does not show someone who has left Lumorphia", async () => {
+      const gone = await user("deleted");
+      await expect(getPublicProfile(db, gone.handle)).rejects.toMatchObject({
+        code: "not_found",
+      });
+    });
+
+    it("does not show a handle nobody has", async () => {
+      await expect(getPublicProfile(db, "test_nobody")).rejects.toMatchObject({
+        code: "not_found",
+      });
+    });
   });
 });

@@ -13,7 +13,11 @@ import {
 } from "@lumorphia-scenote/core/domain/posts";
 import { DomainError } from "@lumorphia-scenote/core";
 import { findBlockedText } from "@lumorphia-scenote/core/domain/blocked-text";
-import { listPublicPosts, MAX_PAGE_SIZE } from "@lumorphia-scenote/core/domain/browse";
+import {
+  getPublicProfile,
+  listPublicPosts,
+  MAX_PAGE_SIZE,
+} from "@lumorphia-scenote/core/domain/browse";
 import { withErrors } from "../schemas/error.ts";
 
 const postSchema = z.object({
@@ -176,10 +180,14 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
     {
       schema: {
         tags: ["posts"],
-        summary: "公開の投稿を新しい順に",
+        summary: "公開の投稿を新しい順に。タグか投稿者で絞れる",
         querystring: z.object({
           cursor: z.string().max(500).optional(),
           limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).optional(),
+          /** タグで絞る (S6c)。書き方のゆれはそろえる */
+          tag: z.string().max(200).optional(),
+          /** 投稿者の handle で絞る (S6c) */
+          author: z.string().max(64).optional(),
         }),
         response: withErrors({
           200: z.object({
@@ -207,6 +215,22 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (req) =>
       listPublicPosts({ db: app.db, imageBaseUrl: app.env.PUBLIC_IMAGE_BASE_URL }, req.query),
+  );
+
+  // 利用者のページの見出し (S6c)。退会中の人と、無い handle は 404
+  app.get(
+    "/users/:handle",
+    {
+      schema: {
+        tags: ["posts"],
+        summary: "利用者の handle・表示名・アイコン",
+        params: z.object({ handle: z.string().max(64) }),
+        response: withErrors({
+          200: z.object({ handle: z.string(), name: z.string(), image: z.string().nullable() }),
+        }),
+      },
+    },
+    async (req) => getPublicProfile(app.db, req.params.handle),
   );
 
   app.get(
