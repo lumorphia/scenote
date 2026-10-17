@@ -330,6 +330,34 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
       expect(second.items).toHaveLength(1);
     });
 
+    it("narrows the list to a tag", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { postId } = await post(cookie, { tags: ["夕焼け"] });
+      await published(cookie, postId);
+      await published(cookie, (await post(cookie)).postId);
+      const page = (await listPosts(`?tag=${encodeURIComponent("夕焼け")}`)).json() as Page;
+      expect(page.items.map((i) => i.id)).toEqual([postId]);
+    });
+
+    it("narrows the list to one person, and shows who they are", async () => {
+      const user = lumorphiaUser();
+      const { cookie } = await loginWithLumorphia(app, mock, user);
+      const { cookie: other } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { postId } = await post(cookie);
+      await published(cookie, postId);
+      await published(other, (await post(other)).postId);
+      const page = (await listPosts(`?author=${user.handle}`)).json() as Page;
+      expect(page.items.map((i) => i.id)).toEqual([postId]);
+      const profile = await app.inject({ method: "GET", url: `/api/users/${user.handle}` });
+      expect(profile.json()).toMatchObject({ handle: user.handle });
+    });
+
+    it("answers 404 for a person nobody is", async () => {
+      expect((await app.inject({ method: "GET", url: "/api/users/test_nobody" })).statusCode).toBe(
+        404,
+      );
+    });
+
     it("refuses a page size over the limit", async () => {
       expect((await listPosts("?limit=1000")).statusCode).toBe(400);
     });

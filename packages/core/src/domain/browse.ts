@@ -2,7 +2,7 @@ import { and, eq, inArray, lt, or, sql, type SQL } from "drizzle-orm";
 import { schema, type Database } from "@lumorphia-scenote/db";
 import { DomainError } from "./errors.ts";
 import { imageUrl } from "./posts.ts";
-import type { TagInput } from "./tags.ts";
+import { normalizeTag, type TagInput } from "./tags.ts";
 
 /** 1 ページの既定と上限 */
 export const DEFAULT_PAGE_SIZE = 24;
@@ -56,14 +56,37 @@ const listable = and(
   eq(schema.users.status, "active"),
 );
 
-/** 公開の投稿を新しい順に。次のページがあるときだけ nextCursor を返す */
+export type ListInput = {
+  cursor?: string | undefined;
+  limit?: number | undefined;
+  /** タグで絞る (S6c)。書き方のゆれはそろえてから探す */
+  tag?: string | undefined;
+  /** 投稿者の handle で絞る (S6c、利用者のページ) */
+  author?: string | undefined;
+};
+
+/** 公開の投稿を新しい順に。タグか投稿者で絞れる。次のページがあるときだけ nextCursor を返す */
 export async function listPublicPosts(
   { db, imageBaseUrl }: { db: Database; imageBaseUrl: string },
-  input: { cursor?: string | undefined; limit?: number | undefined },
+  input: ListInput,
 ): Promise<PostPage> {
   const limit = Math.min(Math.max(input.limit ?? DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
   const after = input.cursor ? decodeCursor(input.cursor) : null;
   const conditions: (SQL | undefined)[] = [listable];
+  if (input.tag !== undefined) {
+    const { name } = normalizeTag(input.tag);
+    conditions.push(
+      inArray(
+        schema.posts.id,
+        db
+          .select({ postId: schema.postTags.postId })
+          .from(schema.postTags)
+          .innerJoin(schema.tags, eq(schema.tags.id, schema.postTags.tagId))
+          .where(eq(schema.tags.name, name)),
+      ),
+    );
+  }
+  if (input.author !== undefined) conditions.push(eq(schema.users.handle, input.author));
   if (after) {
     const publishedAt = new Date(after.publishedAt);
     conditions.push(
@@ -141,4 +164,16 @@ async function tagsOfPosts(db: Database, postIds: string[]): Promise<Map<string,
       tags.map(({ name, displayName }) => ({ name, displayName })),
     ]),
   );
+}
+
+export type PublicProfile = { handle: string; name: string; image: string | null };
+
+/** 利用者のページの見出し (S6c)。退会中の人と、無い handle は無いことにする */
+export async function getPublicProfile(db: Database, handle: string): Promise<PublicProfile> {
+  const [row] = await db
+    .select({ handle: schema.users.handle, name: schema.users.name, image: schema.users.image })
+    .from(schema.users)
+    .where(and(eq(schema.users.handle, handle), eq(schema.users.status, "active")));
+  if (!row) throw new DomainError("not_found", "user not found");
+  return row;
 }
