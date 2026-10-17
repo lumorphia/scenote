@@ -71,6 +71,13 @@
       "when": 1792230664028,
       "tag": "0009_post_list_index",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792240341989,
+      "tag": "0010_admin_audit_logs",
+      "breakpoints": true
     }
   ]
 }

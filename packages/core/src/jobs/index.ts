@@ -1,6 +1,6 @@
 import type { ModerationConfig } from "@lumorphia/moderation/image";
 import { createDefaultImageProcessJob } from "./image-process.ts";
-import { imageDeleteJob, uploadCleanupJob } from "./cleanup.ts";
+import { auditLogPurgeJob, imageDeleteJob, uploadCleanupJob } from "./cleanup.ts";
 import { imageMoveJob } from "./image-move.ts";
 import { createPlaceSyncJob } from "./place-sync.ts";
 import type { PlaceSource } from "../adapters/xivapi-places.ts";
@@ -17,7 +17,12 @@ export {
   PUBLIC_IMAGE_CACHE_CONTROL,
   type ImageProcessData,
 } from "./image-process.ts";
-export { imageDeleteJob, uploadCleanupJob, type ImageDeleteData } from "./cleanup.ts";
+export {
+  auditLogPurgeJob,
+  imageDeleteJob,
+  uploadCleanupJob,
+  type ImageDeleteData,
+} from "./cleanup.ts";
 export { imageMoveJob, type ImageMoveData } from "./image-move.ts";
 export { createPlaceSyncJob } from "./place-sync.ts";
 
@@ -36,5 +41,6 @@ export function defaultJobs(options: {
     imageMoveJob,
     imageDeleteJob,
     uploadCleanupJob,
+    auditLogPurgeJob,
   ] as JobDefinition<never>[];
 }

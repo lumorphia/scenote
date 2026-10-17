@@ -7,6 +7,7 @@ export const JOB_NAMES = [
   "image-delete",
   "upload-cleanup",
   "place-sync",
+  "audit-log-purge",
 ] as const;
 export type JobName = (typeof JOB_NAMES)[number];
 
