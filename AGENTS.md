@@ -47,6 +47,10 @@ scripts/        dev-certs.sh (開発と E2E の TLS)
 - タイトル・本文・タグ・自由入力の撮影場所は NG 語と照合する (`domain/blocked-text.ts`、ADR-0015)。投稿画面は画像を送る前に `POST /api/posts/check-text` で確かめる。断るときは欄だけを `error.issues` で返し、語は返さない。テストの語は `BLOCKED_TERMS` から取る
 - テストの画像はテストの中で sharp で作る。EXIF や拡張チャンクが落ちることは `packages/core/src/jobs/image-process.db.test.ts` で確かめる
 
+## 管理画面 (ADR-0019)
+
+`/admin` と `/api/admin/*` は `requireAdmin` を通す。env の `ADMIN_SUBS` (Lumorphia の sub) にいて退会中でない人だけで、それ以外は 404。操作は同じトランザクションで `recordAdminAction` (`domain/admin.ts`) に記録し、理由は必須、利用者は sub か投稿の ID だけで指す。E2E の運営者は `e2e/lumorphia.ts` の `E2E_ADMIN_SUB`
+
 ## 依存の方向 (ESLint が強制する)
 
 ```
