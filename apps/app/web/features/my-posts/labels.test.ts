@@ -7,6 +7,7 @@ describe("statusLabel", () => {
     ["processing", "仕上げ中"],
     ["failed", "受け付けられませんでした"],
     ["held", "確認中"],
+    ["hidden", "非表示"],
   ] as const)("names a post that is %s", (status, label) => {
     expect(statusLabel(status)).toBe(label);
   });
