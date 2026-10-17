@@ -19,5 +19,6 @@
 | [0015](0015-blocked-words.md)                 | NG 語は画像を送る前に確かめ、サーバーで必ず断る                            | Accepted |
 | [0016](0016-post-list.md)                     | 投稿一覧は公開の投稿だけを新しい順に、カーソルで読み、いちばん低い列に積む | Accepted |
 | [0017](0017-post-deletion.md)                 | 投稿の削除はすぐに行を消し、画像は worker が消す                           | Accepted |
+| [0018](0018-ogp.md)                           | OGP の画像は派生画像のジョブで作り、meta は load context で SSR する       | Accepted |
 
 本文中の「prismtone ADR-NNNN」は lumorphia/prismtone の ADR を指す。
