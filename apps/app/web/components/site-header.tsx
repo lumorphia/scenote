@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 
+import { ThemeToggle } from "../features/journal/ThemeToggle.tsx";
+
 type Me = {
   user: { handle: string; name: string; image: string | null; needsConsent: boolean } | null;
   loginAvailable: boolean;
@@ -24,6 +26,7 @@ export function SiteHeader() {
   useEffect(() => {
     let active = true;
     const key = location.key;
+    document.querySelector<HTMLDetailsElement>(".journal-mobile-nav")?.removeAttribute("open");
     void fetch("/api/me", { credentials: "same-origin" })
       .then((res) => (res.ok ? (res.json() as Promise<Me>) : null))
       .then((data) => {
@@ -59,17 +62,41 @@ export function SiteHeader() {
 
   const next = `${location.pathname}${location.search}`;
   return (
-    <header className="flex items-center justify-between gap-4 border-b border-line-soft px-4 py-3">
-      <Link to="/" className="shrink-0 font-semibold">
-        Scenote
+    <header className="journal-header">
+      <Link to="/" className="journal-brand" aria-label="Scenote トップ">
+        Scenote<span>A JOURNAL OF EORZEA</span>
       </Link>
+      <nav className="journal-header-links" aria-label="メイン">
+        <Link to="/#photos">写真を見る</Link>
+        <Link to="/#map">地図から探す</Link>
+        <Link to="/edit" className="journal-edit-link">
+          写真を編集する ↗
+        </Link>
+      </nav>
+      <ThemeToggle />
+      <details className="journal-mobile-nav">
+        <summary>メニュー</summary>
+        <nav aria-label="メイン">
+          <Link to="/#photos">写真を見る</Link>
+          <Link to="/#map">地図から探す</Link>
+          <Link to="/edit">写真を編集する</Link>
+          {me?.user ? (
+            <>
+              <Link to="/me">自分の投稿</Link>
+              <button type="button" onClick={() => void logout()} disabled={busy}>
+                ログアウト
+              </button>
+            </>
+          ) : null}
+        </nav>
+      </details>
       {me?.user ? (
-        <div className="flex min-w-0 items-center gap-3 text-sm">
-          <Link to="/me" className="shrink-0 whitespace-nowrap hover:underline">
+        <div className="journal-account">
+          <Link to="/me" className="journal-my-posts">
             自分の投稿
           </Link>
           {/* 狭い画面では表示名を隠し、アイコンと handle だけにする */}
-          <span data-testid="signed-in-user" className="flex min-w-0 items-center gap-2">
+          <span data-testid="signed-in-user" className="journal-signed-in-user">
             {me.user.image ? (
               <img
                 src={me.user.image}

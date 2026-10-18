@@ -515,7 +515,9 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
       regions: [
         {
           name: "ラノシア",
-          places: [{ id: limsa!.id, name: "リムサ・ロミンサ：上甲板層", kind: "town" }],
+          places: [
+            { id: limsa!.id, sourceId: 28, name: "リムサ・ロミンサ：上甲板層", kind: "town" },
+          ],
         },
       ],
     });
@@ -523,6 +525,7 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
     const { postId } = await post(cookie, { placeId: limsa!.id });
     expect((await readPost(cookie, postId)).json().place).toEqual({
       id: limsa!.id,
+      sourceId: 28,
       regionName: "ラノシア",
       name: "リムサ・ロミンサ：上甲板層",
     });
@@ -534,6 +537,7 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
     });
     expect((await readPost(cookie, postId)).json().place).toEqual({
       id: null,
+      sourceId: null,
       regionName: null,
       name: "テスト_ゴールドソーサー",
     });

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { PostList, type PostCard } from "./PostList.tsx";
 
-type Page = { items: PostCard[]; nextCursor: string | null };
+export type PostPage = { items: PostCard[]; nextCursor: string | null };
 
 /** 一覧の API の問い合わせ。絞り込み (tag・author) とカーソルをつなぐ */
 export function postsUrl(filter: Record<string, string>, cursor: string | null): string {
@@ -17,13 +17,15 @@ export function postsUrl(filter: Record<string, string>, cursor: string | null):
 export function PostFeed({
   filter = {},
   emptyMessage,
+  initialPage,
 }: {
   filter?: Record<string, string>;
   emptyMessage: string;
+  initialPage?: PostPage | undefined;
 }) {
   const key = JSON.stringify(filter);
-  const [items, setItems] = useState<PostCard[] | null>(null);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [items, setItems] = useState<PostCard[] | null>(initialPage?.items ?? null);
+  const [nextCursor, setNextCursor] = useState<string | null>(initialPage?.nextCursor ?? null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -36,7 +38,7 @@ export function PostFeed({
           credentials: "same-origin",
         });
         if (!res.ok) throw new Error(`list failed: ${res.status}`);
-        const page = (await res.json()) as Page;
+        const page = (await res.json()) as PostPage;
         setItems((before) => [...(cursor ? (before ?? []) : []), ...page.items]);
         setNextCursor(page.nextCursor);
       } catch {
@@ -49,10 +51,15 @@ export function PostFeed({
   );
 
   useEffect(() => {
+    if (initialPage) {
+      setItems(initialPage.items);
+      setNextCursor(initialPage.nextCursor);
+      return;
+    }
     setItems(null);
     setNextCursor(null);
     void load(null);
-  }, [load]);
+  }, [load, initialPage]);
 
   return (
     <>

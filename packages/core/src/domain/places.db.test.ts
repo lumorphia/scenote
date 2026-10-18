@@ -130,6 +130,7 @@ describe.skipIf(!databaseUrl)("places (PostgreSQL)", () => {
       });
       expect((await view(me.id, postId)).place).toEqual({
         id: place!.id,
+        sourceId: place!.sourceId,
         regionName: "ラノシア",
         name: "リムサ・ロミンサ：上甲板層",
       });
@@ -143,6 +144,7 @@ describe.skipIf(!databaseUrl)("places (PostgreSQL)", () => {
       });
       expect((await view(me.id, postId)).place).toEqual({
         id: null,
+        sourceId: null,
         regionName: null,
         name: "テスト_ゴールドソーサー",
       });

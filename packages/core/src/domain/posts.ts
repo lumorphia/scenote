@@ -192,7 +192,12 @@ export type PostView = {
   takenOn: string | null;
   tags: TagInput[];
   /** 候補から選んだ場所なら id と地域つき、自由入力なら名前だけ */
-  place: { id: string | null; regionName: string | null; name: string } | null;
+  place: {
+    id: string | null;
+    sourceId: number | null;
+    regionName: string | null;
+    name: string;
+  } | null;
   image: {
     display: string;
     thumb: string;
@@ -329,9 +334,12 @@ export async function changeTags(
 async function placeOf(db: Database, post: PostRow): Promise<PostView["place"]> {
   if (post.placeId) {
     const [row] = await db.select().from(schema.places).where(eq(schema.places.id, post.placeId));
-    if (row) return { id: row.id, regionName: row.regionName, name: row.name };
+    if (row)
+      return { id: row.id, sourceId: row.sourceId, regionName: row.regionName, name: row.name };
   }
-  return post.placeText ? { id: null, regionName: null, name: post.placeText } : null;
+  return post.placeText
+    ? { id: null, sourceId: null, regionName: null, name: post.placeText }
+    : null;
 }
 
 /** 撮影場所を付け直す (本人だけ)。どちらも無ければ外す */

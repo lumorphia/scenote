@@ -1,0 +1,24 @@
+{
+  "copyright": "© SQUARE ENIX",
+  "owner": "Scenote 運営者",
+  "photos": [
+    {
+      "file": "afternoon.webp",
+      "source": "ffxiv_20221022_131320_541.png",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "file": "journey.webp",
+      "source": "ffxiv_20200823_075638_085.png",
+      "width": 1752,
+      "height": 976
+    },
+    {
+      "file": "friends.webp",
+      "source": "ffxiv_20240116_230818_466.png",
+      "width": 2560,
+      "height": 1440
+    }
+  ]
+}

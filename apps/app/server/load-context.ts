@@ -1,5 +1,7 @@
 import { RouterContextProvider } from "react-router";
 import type { FastifyInstance } from "fastify";
+import { listPublicPosts } from "@lumorphia-scenote/core/domain/browse";
+import { listPlaces } from "@lumorphia-scenote/core/domain/places";
 import { getPostShare } from "@lumorphia-scenote/core/domain/share";
 import { serverReadsContext, type ServerReads } from "../web/lib/server-context.ts";
 
@@ -13,6 +15,19 @@ export function createLoadContext(app: FastifyInstance): RouterContextProvider {
   const siteUrl = app.env.AUTH_BASE_URL.replace(/\/$/, "");
   const reads: ServerReads = {
     siteUrl,
+    async journalHome() {
+      const [page, regions] = await Promise.all([
+        listPublicPosts({ db: app.db, imageBaseUrl: app.env.PUBLIC_IMAGE_BASE_URL }, {}),
+        listPlaces(app.db),
+      ]);
+      return {
+        page: {
+          ...page,
+          items: page.items.map((p) => ({ ...p, publishedAt: p.publishedAt.toISOString() })),
+        },
+        regions,
+      };
+    },
     async postShare(postId) {
       const share = await getPostShare(
         { db: app.db, imageBaseUrl: app.env.PUBLIC_IMAGE_BASE_URL },

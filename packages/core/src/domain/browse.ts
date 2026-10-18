@@ -16,6 +16,13 @@ export type PostCard = {
   width: number;
   height: number;
   blurhash: string | null;
+  takenOn: string | null;
+  place: {
+    id: string | null;
+    sourceId: number | null;
+    regionName: string | null;
+    name: string;
+  } | null;
   author: { handle: string; name: string; image: string | null };
   tags: TagInput[];
   publishedAt: Date;
@@ -40,6 +47,8 @@ export type ListInput = {
   tag?: string | undefined;
   /** 投稿者の handle で絞る (S6c、利用者のページ) */
   author?: string | undefined;
+  /** 候補から選んだ撮影場所で絞る */
+  placeId?: string | undefined;
 };
 
 /** 公開の投稿を新しい順に。タグか投稿者で絞れる。次のページがあるときだけ nextCursor を返す */
@@ -64,6 +73,7 @@ export async function listPublicPosts(
     );
   }
   if (input.author !== undefined) conditions.push(eq(schema.users.handle, input.author));
+  if (input.placeId !== undefined) conditions.push(eq(schema.posts.placeId, input.placeId));
   if (after) {
     conditions.push(
       or(
@@ -80,6 +90,14 @@ export async function listPublicPosts(
       width: schema.posts.width,
       height: schema.posts.height,
       blurhash: schema.posts.blurhash,
+      takenOn: schema.posts.takenOn,
+      placeText: schema.posts.placeText,
+      place: {
+        id: schema.places.id,
+        sourceId: schema.places.sourceId,
+        regionName: schema.places.regionName,
+        name: schema.places.name,
+      },
       publishedAt: schema.posts.publishedAt,
       handle: schema.users.handle,
       name: schema.users.name,
@@ -87,6 +105,7 @@ export async function listPublicPosts(
     })
     .from(schema.posts)
     .innerJoin(schema.users, eq(schema.users.id, schema.posts.userId))
+    .leftJoin(schema.places, eq(schema.places.id, schema.posts.placeId))
     .where(and(...conditions))
     // 索引 (posts_public_list_idx) と同じ並び。NULLS LAST まで揃えないと索引で並べられない
     .orderBy(
@@ -109,6 +128,10 @@ export async function listPublicPosts(
       width: r.width!,
       height: r.height!,
       blurhash: r.blurhash,
+      takenOn: r.takenOn,
+      place:
+        r.place ??
+        (r.placeText ? { id: null, sourceId: null, regionName: null, name: r.placeText } : null),
       author: { handle: r.handle, name: r.name, image: r.image },
       tags: tags.get(r.id) ?? [],
       publishedAt: r.publishedAt!,

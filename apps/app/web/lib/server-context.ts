@@ -1,3 +1,5 @@
+import type { PostPage } from "../features/post-list/PostFeed.tsx";
+import type { MapRegion } from "../features/journal/maps.ts";
 import { createContext } from "react-router";
 
 /** 投稿の OGP に使うもの。サーバーが domain/share.ts から作り、画像の URL は絶対にしてある */
@@ -13,6 +15,7 @@ export type PostShareMeta = {
 export type ServerReads = {
   /** サイトの公開 origin (og:url) */
   siteUrl: string;
+  journalHome(): Promise<{ page: PostPage; regions: MapRegion[] }>;
   /** 共有できない投稿は null */
   postShare(postId: string): Promise<PostShareMeta | null>;
 };

@@ -35,6 +35,8 @@ test("a tag can be searched from the top page", async ({ page }) => {
   await gotoHydrated(page, "/");
   await page.getByRole("searchbox", { name: "タグで探す" }).fill(`#${tag}`);
   await page.getByRole("searchbox", { name: "タグで探す" }).press("Enter");
+  await expect(page).toHaveURL(new RegExp(`/tags/${encodeURIComponent(tag.toLowerCase())}$`));
+  await expect(page.getByRole("heading", { name: `#${tag.toLowerCase()}` })).toBeVisible();
   await expect(page.getByRole("link", { name: new RegExp(title) })).toBeVisible();
 });
 

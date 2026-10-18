@@ -54,7 +54,7 @@ export async function syncPlaces(
 
 export type PlaceRegion = {
   name: string;
-  places: { id: string; name: string; kind: PlaceRecord["kind"] }[];
+  places: { id: string; sourceId: number; name: string; kind: PlaceRecord["kind"] }[];
 };
 
 /** 候補を地域ごとに。並びはゲームの順 (row_id) */
@@ -67,7 +67,7 @@ export async function listPlaces(db: Database): Promise<PlaceRegion[]> {
   const regions: PlaceRegion[] = [];
   for (const row of rows) {
     const last = regions.at(-1);
-    const place = { id: row.id, name: row.name, kind: row.kind };
+    const place = { id: row.id, sourceId: row.sourceId, name: row.name, kind: row.kind };
     if (last && last.name === row.regionName) last.places.push(place);
     else regions.push({ name: row.regionName, places: [place] });
   }
