@@ -5,11 +5,12 @@ lumorphia/scenote: FINAL FANTASY XIV で撮った風景・日常・旅・記念�
 
 ## 着手前に読むもの
 
-| 目的                     | 文書                                                      |
-| ------------------------ | --------------------------------------------------------- |
-| 何を作るか               | [docs/scenote\_要件定義書.md](docs/scenote_要件定義書.md) |
-| 段階 (S1〜S7) と進み具合 | [docs/plan.md](docs/plan.md)                              |
-| なぜそう決めたか         | [docs/adr/](docs/adr/)                                    |
+| 目的                                     | 文書                                                      |
+| ---------------------------------------- | --------------------------------------------------------- |
+| 何を作るか                               | [docs/scenote\_要件定義書.md](docs/scenote_要件定義書.md) |
+| 段階 (S1〜S7) と進み具合                 | [docs/plan.md](docs/plan.md)                              |
+| なぜそう決めたか                         | [docs/adr/](docs/adr/)                                    |
+| 本番の起動・更新・復元・監視・公開の判断 | [docs/runbook/](docs/runbook/)                            |
 
 骨組みは lumorphia/accounts の A1.0 から写している (ADR-0008)。投稿・タグ・検索・一覧・通報は lumorphia/prismtone から写して始める (ADR-0006)。本文やコメントの `lumorphia/prismtone#N`・`prismtone ADR-NNNN` は prismtone のもの。
 
@@ -20,7 +21,7 @@ apps/app        React Router (SSR) + Fastify。画面と API
 packages/core   ドメイン (ログイン、退会の知らせ、受け取りと投稿) と pg-boss のジョブ (jobs/)
 packages/db     Drizzle のスキーマとマイグレーション、ファイルごとの専用 DB を作るテストの仕組み
 e2e/            Playwright。https の scenote.lumorphia.test で回す
-docker/         開発の Caddy (Caddyfile.dev)
+docker/         本番のイメージ (Dockerfile)、バックアップ、監視のスクリプト、doco-cd、Caddy (本番の Caddyfile.scenote と開発の Caddyfile.dev)
 scripts/        dev-certs.sh (開発と E2E の TLS)
 ```
 
@@ -67,7 +68,7 @@ Lumorphia アカウントのクライアントは https かつループバック
 - **開発**: Vite の開発サーバーは http (127.0.0.1:3200)。compose の Caddy が `https://scenote.lumorphia.test:8445` で受けて流す。Vite 8 は https にすると必ず HTTP/2 になり、その疑似ヘッダー (`:method`) を `@mcansh/react-router-fastify` が扱えないため、Vite には https を持たせない。ブラウザで開くには hosts に `127.0.0.1 scenote.lumorphia.test` を足し、`.data/tls/ca.pem` を信頼させる
 - 開発サーバーは `packages/*` の変更や、表の追加 (マイグレーション) を取り込み損ねることがある (Better Auth の `SCHEMA_MISMATCH` や、古い関数のまま動く)。そのときは開発サーバーを立て直す
 - **E2E**: Fastify が直接 https で待ち受ける (`DEV_TLS_*`、`server/tls.ts`)。本番と同じビルドで、HTTP/1.1
-- **本番**: Caddy が TLS を受ける (本番の段で作る)。`DEV_TLS_*` は production では無視する
+- **本番**: Prismtone の Caddy が TLS を受け、`lumorphia-edge` の `scenote-web:3200` へ流す (ADR-0025、`docs/runbook/deploy.md`)。`DEV_TLS_*` は production では無視する
 
 ## 作業の流れ
 
