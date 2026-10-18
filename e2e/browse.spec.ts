@@ -13,7 +13,7 @@ test("a public post appears at the top of the list and leads to its page", async
   await post(page, undefined, title);
   const url = page.url();
   await gotoHydrated(page, "/");
-  const card = page.getByRole("link", { name: new RegExp(title) });
+  const card = page.getByTestId("post-list").getByRole("link", { name: new RegExp(title) });
   await expect(card).toBeVisible();
   await expect(card).toContainText(`@${user.handle}`);
   await expect(card.getByRole("img")).toHaveJSProperty("complete", true);

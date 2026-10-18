@@ -5,7 +5,9 @@ test("serves the top page over https on the lumorphia.test host", async ({ page 
   await gotoHydrated(page, "/");
   expect(new URL(page.url()).protocol).toBe("https:");
   expect(new URL(page.url()).hostname).toBe("scenote.lumorphia.test");
-  await expect(page.getByRole("heading", { name: "Scenote" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /何でもない日も、.*いい思い出になる。/ }),
+  ).toBeVisible();
 });
 
 test("answers the health check with the database up", async ({ page }) => {

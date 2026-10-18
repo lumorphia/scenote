@@ -3,7 +3,11 @@ import { Link } from "react-router";
 /** フッター。規約とプライバシーポリシーへのリンク (ADR-0023) */
 export function SiteFooter() {
   return (
-    <footer className="mt-12 border-t border-line-soft px-4 py-6 text-sm text-ink-muted">
+    <footer className="journal-footer">
+      <Link to="/" className="journal-brand">
+        Scenote
+      </Link>
+      <p className="journal-footer-description">FINAL FANTASY XIVの風景と日常を残す写真日誌。</p>
       <nav aria-label="Scenote について" className="flex flex-wrap gap-4">
         <Link to="/terms" className="hover:underline">
           利用規約

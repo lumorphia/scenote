@@ -26,6 +26,13 @@ import {
 } from "@lumorphia-scenote/core/domain/reports";
 import { errorSchema, withErrors } from "../schemas/error.ts";
 
+const placeSchema = z.object({
+  id: z.string().nullable(),
+  sourceId: z.number().int().nullable(),
+  regionName: z.string().nullable(),
+  name: z.string(),
+});
+
 const postSchema = z.object({
   id: z.string(),
   status: z.enum(["processing", "published", "failed", "held", "hidden"]),
@@ -37,9 +44,7 @@ const postSchema = z.object({
   body: z.string().nullable(),
   takenOn: z.string().nullable(),
   tags: z.array(z.object({ name: z.string(), displayName: z.string() })),
-  place: z
-    .object({ id: z.string().nullable(), regionName: z.string().nullable(), name: z.string() })
-    .nullable(),
+  place: placeSchema.nullable(),
   image: z
     .object({
       display: z.string(),
@@ -157,6 +162,7 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
                 places: z.array(
                   z.object({
                     id: z.string(),
+                    sourceId: z.number().int(),
                     name: z.string(),
                     kind: z.enum(["town", "field", "inn", "housing"]),
                   }),
@@ -194,6 +200,7 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
           tag: z.string().max(200).optional(),
           /** 投稿者の handle で絞る (S6c) */
           author: z.string().max(64).optional(),
+          placeId: z.uuid().optional(),
         }),
         response: withErrors({
           200: z.object({
@@ -205,6 +212,8 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
                 width: z.number(),
                 height: z.number(),
                 blurhash: z.string().nullable(),
+                takenOn: z.string().nullable(),
+                place: placeSchema.nullable(),
                 author: z.object({
                   handle: z.string(),
                   name: z.string(),

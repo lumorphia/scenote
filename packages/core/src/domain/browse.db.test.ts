@@ -50,6 +50,8 @@ describe.skipIf(!databaseUrl)("listing public posts (PostgreSQL)", () => {
       publishedAt?: Date;
       title?: string;
       tags?: string[];
+      placeId?: string;
+      takenOn?: string;
     } = {},
   ) {
     const id = randomUUID();
@@ -67,15 +69,66 @@ describe.skipIf(!databaseUrl)("listing public posts (PostgreSQL)", () => {
         height: 900,
         blurhash: "test-blurhash",
         title: fields.title ?? null,
+        placeId: fields.placeId ?? null,
+        takenOn: fields.takenOn ?? null,
         publishedAt: status === "published" ? (fields.publishedAt ?? new Date()) : null,
       })
       .returning();
     if (fields.tags) await replacePostTags(db, id, validateTags(fields.tags));
     return row!;
   }
-  const list = (input: { cursor?: string; limit?: number; tag?: string; author?: string } = {}) =>
-    listPublicPosts({ db, imageBaseUrl: IMAGE_BASE }, input);
+  const list = (
+    input: {
+      cursor?: string;
+      limit?: number;
+      tag?: string;
+      author?: string;
+      placeId?: string;
+    } = {},
+  ) => listPublicPosts({ db, imageBaseUrl: IMAGE_BASE }, input);
   const at = (minutes: number) => new Date(Date.UTC(2026, 9, 1, 12, minutes));
+
+  it("lists only public photos from the selected place", async () => {
+    const me = await user();
+    const [place] = await db
+      .insert(schema.places)
+      .values({
+        sourceId: 30,
+        regionSourceId: 22,
+        regionName: "ラノシア",
+        name: "中央ラノシア",
+        kind: "field",
+        syncedAt: new Date(),
+      })
+      .onConflictDoUpdate({ target: schema.places.sourceId, set: { name: "中央ラノシア" } })
+      .returning();
+    const matching = await post(me.id, { placeId: place!.id });
+    await post(me.id);
+    await post(me.id, { placeId: place!.id, visibility: "unlisted" });
+    await post(me.id, { placeId: place!.id, visibility: "private" });
+    expect((await list({ placeId: place!.id })).items.map((p) => p.id)).toEqual([matching.id]);
+  });
+
+  it("includes the shooting date and place in a photo card", async () => {
+    const me = await user();
+    const [place] = await db
+      .insert(schema.places)
+      .values({
+        sourceId: 2956,
+        regionSourceId: 2950,
+        regionName: "ノルヴラント",
+        name: "イル・メグ",
+        kind: "field",
+        syncedAt: new Date(),
+      })
+      .onConflictDoUpdate({ target: schema.places.sourceId, set: { name: "イル・メグ" } })
+      .returning();
+    await post(me.id, { placeId: place!.id, takenOn: "2026-10-12" });
+    expect((await list()).items[0]).toMatchObject({
+      takenOn: "2026-10-12",
+      place: { id: place!.id, sourceId: 2956, name: "イル・メグ", regionName: "ノルヴラント" },
+    });
+  });
 
   it("lists public posts, newest first", async () => {
     const me = await user();
@@ -129,6 +182,8 @@ describe.skipIf(!databaseUrl)("listing public posts (PostgreSQL)", () => {
       width: 1600,
       height: 900,
       blurhash: "test-blurhash",
+      takenOn: null,
+      place: null,
       author: { handle: me.handle, name: "テスト_利用者", image: me.image },
       tags: [
         { name: "海", displayName: "海" },

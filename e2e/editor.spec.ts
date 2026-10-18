@@ -7,7 +7,10 @@ import { gotoHydrated, openEditorWithImage } from "./helpers.ts";
 
 test("the top page leads to the editor", async ({ page }) => {
   await gotoHydrated(page, "/");
-  await page.getByRole("link", { name: "現像する" }).click();
+  await page
+    .locator(".journal-hero")
+    .getByRole("link", { name: /写真を編集する/ })
+    .click();
   await expect(page).toHaveURL(/\/edit$/);
   await expect(page.getByRole("button", { name: "画像を開く" })).toBeVisible();
 });

@@ -1,0 +1,560 @@
+{
+  "copyright": "© SQUARE ENIX",
+  "retrievedAt": "2026-10-18",
+  "source": "https://v2.xivapi.com/api/sheet/TerritoryType",
+  "maps": [
+    {
+      "sourceId": 28,
+      "name": "リムサ・ロミンサ：上甲板層",
+      "regionName": "ラノシア",
+      "mapId": "s1t1/01",
+      "territoryId": 128
+    },
+    {
+      "sourceId": 29,
+      "name": "リムサ・ロミンサ：下甲板層",
+      "regionName": "ラノシア",
+      "mapId": "s1t2/01",
+      "territoryId": 129
+    },
+    {
+      "sourceId": 40,
+      "name": "ウルダハ：ナル回廊",
+      "regionName": "ザナラーン",
+      "mapId": "w1t1/01",
+      "territoryId": 130
+    },
+    {
+      "sourceId": 41,
+      "name": "ウルダハ：ザル回廊",
+      "regionName": "ザナラーン",
+      "mapId": "w1t2/01",
+      "territoryId": 131
+    },
+    {
+      "sourceId": 52,
+      "name": "グリダニア：新市街",
+      "regionName": "黒衣森",
+      "mapId": "f1t1/00",
+      "territoryId": 132
+    },
+    {
+      "sourceId": 53,
+      "name": "グリダニア：旧市街",
+      "regionName": "黒衣森",
+      "mapId": "f1t2/00",
+      "territoryId": 133
+    },
+    {
+      "sourceId": 30,
+      "name": "中央ラノシア",
+      "regionName": "ラノシア",
+      "mapId": "s1f1/00",
+      "territoryId": 134
+    },
+    {
+      "sourceId": 31,
+      "name": "低地ラノシア",
+      "regionName": "ラノシア",
+      "mapId": "s1f2/00",
+      "territoryId": 135
+    },
+    {
+      "sourceId": 425,
+      "name": "ミスト・ヴィレッジ",
+      "regionName": "ラノシア",
+      "mapId": "s1h1/01",
+      "territoryId": 136
+    },
+    {
+      "sourceId": 32,
+      "name": "東ラノシア",
+      "regionName": "ラノシア",
+      "mapId": "s1f3/01",
+      "territoryId": 137
+    },
+    {
+      "sourceId": 33,
+      "name": "西ラノシア",
+      "regionName": "ラノシア",
+      "mapId": "s1f4/00",
+      "territoryId": 138
+    },
+    {
+      "sourceId": 34,
+      "name": "高地ラノシア",
+      "regionName": "ラノシア",
+      "mapId": "s1f5/00",
+      "territoryId": 139
+    },
+    {
+      "sourceId": 42,
+      "name": "西ザナラーン",
+      "regionName": "ザナラーン",
+      "mapId": "w1f1/00",
+      "territoryId": 140
+    },
+    {
+      "sourceId": 43,
+      "name": "中央ザナラーン",
+      "regionName": "ザナラーン",
+      "mapId": "w1f2/00",
+      "territoryId": 141
+    },
+    {
+      "sourceId": 44,
+      "name": "東ザナラーン",
+      "regionName": "ザナラーン",
+      "mapId": "w1f3/00",
+      "territoryId": 145
+    },
+    {
+      "sourceId": 45,
+      "name": "南ザナラーン",
+      "regionName": "ザナラーン",
+      "mapId": "w1f4/01",
+      "territoryId": 146
+    },
+    {
+      "sourceId": 46,
+      "name": "北ザナラーン",
+      "regionName": "ザナラーン",
+      "mapId": "w1f5/00",
+      "territoryId": 147
+    },
+    {
+      "sourceId": 54,
+      "name": "黒衣森：中央森林",
+      "regionName": "黒衣森",
+      "mapId": "f1f1/00",
+      "territoryId": 148
+    },
+    {
+      "sourceId": 55,
+      "name": "黒衣森：東部森林",
+      "regionName": "黒衣森",
+      "mapId": "f1f2/00",
+      "territoryId": 152
+    },
+    {
+      "sourceId": 56,
+      "name": "黒衣森：南部森林",
+      "regionName": "黒衣森",
+      "mapId": "f1f3/00",
+      "territoryId": 153
+    },
+    {
+      "sourceId": 57,
+      "name": "黒衣森：北部森林",
+      "regionName": "黒衣森",
+      "mapId": "f1f4/00",
+      "territoryId": 154
+    },
+    {
+      "sourceId": 63,
+      "name": "クルザス中央高地",
+      "regionName": "クルザス",
+      "mapId": "r1f1/00",
+      "territoryId": 155
+    },
+    {
+      "sourceId": 67,
+      "name": "モードゥナ",
+      "regionName": "モードゥナ",
+      "mapId": "l1f1/01",
+      "territoryId": 156
+    },
+    {
+      "sourceId": 733,
+      "name": "宿屋「ミズンマスト」",
+      "regionName": "ラノシア",
+      "mapId": "s1ti/00",
+      "territoryId": 177
+    },
+    {
+      "sourceId": 617,
+      "name": "宿屋「砂時計亭」",
+      "regionName": "ザナラーン",
+      "mapId": "w1ti/00",
+      "territoryId": 178
+    },
+    {
+      "sourceId": 548,
+      "name": "旅館「とまり木」",
+      "regionName": "黒衣森",
+      "mapId": "f1ti/00",
+      "territoryId": 179
+    },
+    {
+      "sourceId": 350,
+      "name": "外地ラノシア",
+      "regionName": "ラノシア",
+      "mapId": "s1f6/00",
+      "territoryId": 180
+    },
+    {
+      "sourceId": 358,
+      "name": "ウルヴズジェイル係船場",
+      "regionName": "ラノシア",
+      "mapId": "s1p1/00",
+      "territoryId": 250
+    },
+    {
+      "sourceId": 426,
+      "name": "ラベンダーベッド",
+      "regionName": "黒衣森",
+      "mapId": "f1h1/01",
+      "territoryId": 340
+    },
+    {
+      "sourceId": 427,
+      "name": "ゴブレットビュート",
+      "regionName": "ザナラーン",
+      "mapId": "w1h1/01",
+      "territoryId": 341
+    },
+    {
+      "sourceId": 2200,
+      "name": "クルザス西部高地",
+      "regionName": "クルザス",
+      "mapId": "r2f1/00",
+      "territoryId": 397
+    },
+    {
+      "sourceId": 2000,
+      "name": "高地ドラヴァニア",
+      "regionName": "ドラヴァニア",
+      "mapId": "d2f1/00",
+      "territoryId": 398
+    },
+    {
+      "sourceId": 2001,
+      "name": "低地ドラヴァニア",
+      "regionName": "ドラヴァニア",
+      "mapId": "d2f2/00",
+      "territoryId": 399
+    },
+    {
+      "sourceId": 2002,
+      "name": "ドラヴァニア雲海",
+      "regionName": "ドラヴァニア",
+      "mapId": "d2f3/00",
+      "territoryId": 400
+    },
+    {
+      "sourceId": 2100,
+      "name": "アバラシア雲海",
+      "regionName": "アバラシア",
+      "mapId": "a2f1/00",
+      "territoryId": 401
+    },
+    {
+      "sourceId": 2101,
+      "name": "アジス・ラー",
+      "regionName": "アバラシア",
+      "mapId": "a2f2/00",
+      "territoryId": 402
+    },
+    {
+      "sourceId": 2300,
+      "name": "イシュガルド：下層",
+      "regionName": "クルザス",
+      "mapId": "r2t1/00",
+      "territoryId": 418
+    },
+    {
+      "sourceId": 2301,
+      "name": "イシュガルド：上層",
+      "regionName": "クルザス",
+      "mapId": "r2t2/00",
+      "territoryId": 419
+    },
+    {
+      "sourceId": 2310,
+      "name": "旅籠「九つの雲」",
+      "regionName": "クルザス",
+      "mapId": "r2ti/00",
+      "territoryId": 429
+    },
+    {
+      "sourceId": 2082,
+      "name": "イディルシャイア",
+      "regionName": "ドラヴァニア",
+      "mapId": "d2t1/00",
+      "territoryId": 478
+    },
+    {
+      "sourceId": 2406,
+      "name": "ギラバニア辺境地帯",
+      "regionName": "ギラバニア",
+      "mapId": "g3f1/00",
+      "territoryId": 612
+    },
+    {
+      "sourceId": 2409,
+      "name": "紅玉海",
+      "regionName": "オサード",
+      "mapId": "e3f1/00",
+      "territoryId": 613
+    },
+    {
+      "sourceId": 2410,
+      "name": "ヤンサ",
+      "regionName": "オサード",
+      "mapId": "e3f2/00",
+      "territoryId": 614
+    },
+    {
+      "sourceId": 2407,
+      "name": "ギラバニア山岳地帯",
+      "regionName": "ギラバニア",
+      "mapId": "g3f2/00",
+      "territoryId": 620
+    },
+    {
+      "sourceId": 2408,
+      "name": "ギラバニア湖畔地帯",
+      "regionName": "ギラバニア",
+      "mapId": "g3f3/00",
+      "territoryId": 621
+    },
+    {
+      "sourceId": 2411,
+      "name": "アジムステップ",
+      "regionName": "オサード",
+      "mapId": "e3f3/00",
+      "territoryId": 622
+    },
+    {
+      "sourceId": 2404,
+      "name": "クガネ",
+      "regionName": "ひんがしの国",
+      "mapId": "e3t1/00",
+      "territoryId": 628
+    },
+    {
+      "sourceId": 2413,
+      "name": "望海楼",
+      "regionName": "ひんがしの国",
+      "mapId": "e3ti/00",
+      "territoryId": 629
+    },
+    {
+      "sourceId": 2403,
+      "name": "ラールガーズリーチ",
+      "regionName": "ギラバニア",
+      "mapId": "g3t1/00",
+      "territoryId": 635
+    },
+    {
+      "sourceId": 2412,
+      "name": "シロガネ",
+      "regionName": "ひんがしの国",
+      "mapId": "e1h1/01",
+      "territoryId": 641
+    },
+    {
+      "sourceId": 2813,
+      "name": "ドマ町人地",
+      "regionName": "オサード",
+      "mapId": "e3ec/00",
+      "territoryId": 759
+    },
+    {
+      "sourceId": 2953,
+      "name": "レイクランド",
+      "regionName": "ノルヴラント",
+      "mapId": "n4f1/00",
+      "territoryId": 813
+    },
+    {
+      "sourceId": 2954,
+      "name": "コルシア島",
+      "regionName": "ノルヴラント",
+      "mapId": "n4f2/00",
+      "territoryId": 814
+    },
+    {
+      "sourceId": 2955,
+      "name": "アム・アレーン",
+      "regionName": "ノルヴラント",
+      "mapId": "n4f3/00",
+      "territoryId": 815
+    },
+    {
+      "sourceId": 2956,
+      "name": "イル・メグ",
+      "regionName": "ノルヴラント",
+      "mapId": "n4f4/00",
+      "territoryId": 816
+    },
+    {
+      "sourceId": 2957,
+      "name": "ラケティカ大森林",
+      "regionName": "ノルヴラント",
+      "mapId": "n4f5/00",
+      "territoryId": 817
+    },
+    {
+      "sourceId": 2958,
+      "name": "テンペスト",
+      "regionName": "ノルヴラント",
+      "mapId": "n4f6/00",
+      "territoryId": 818
+    },
+    {
+      "sourceId": 2951,
+      "name": "クリスタリウム",
+      "regionName": "ノルヴラント",
+      "mapId": "n4t1/00",
+      "territoryId": 819
+    },
+    {
+      "sourceId": 2952,
+      "name": "ユールモア",
+      "regionName": "ノルヴラント",
+      "mapId": "n4t2/01",
+      "territoryId": 820
+    },
+    {
+      "sourceId": 3222,
+      "name": "ペンダント居住館：居室",
+      "regionName": "ノルヴラント",
+      "mapId": "n4ti/00",
+      "territoryId": 843
+    },
+    {
+      "sourceId": 3708,
+      "name": "ラヴィリンソス",
+      "regionName": "北洋地域",
+      "mapId": "k5f1/00",
+      "territoryId": 956
+    },
+    {
+      "sourceId": 3709,
+      "name": "サベネア島",
+      "regionName": "イルサバード",
+      "mapId": "m5f1/00",
+      "territoryId": 957
+    },
+    {
+      "sourceId": 3710,
+      "name": "ガレマルド",
+      "regionName": "イルサバード",
+      "mapId": "m5f2/00",
+      "territoryId": 958
+    },
+    {
+      "sourceId": 3711,
+      "name": "嘆きの海",
+      "regionName": "星外宙域",
+      "mapId": "u5f1/00",
+      "territoryId": 959
+    },
+    {
+      "sourceId": 3712,
+      "name": "ウルティマ・トゥーレ",
+      "regionName": "星外宙域",
+      "mapId": "u5f2/00",
+      "territoryId": 960
+    },
+    {
+      "sourceId": 3713,
+      "name": "エルピス",
+      "regionName": "古代世界",
+      "mapId": "n5f1/00",
+      "territoryId": 961
+    },
+    {
+      "sourceId": 3706,
+      "name": "オールド・シャーレアン",
+      "regionName": "北洋地域",
+      "mapId": "k5t1/00",
+      "territoryId": 962
+    },
+    {
+      "sourceId": 3707,
+      "name": "ラザハン",
+      "regionName": "イルサバード",
+      "mapId": "m5t1/00",
+      "territoryId": 963
+    },
+    {
+      "sourceId": 4139,
+      "name": "エンピレアム",
+      "regionName": "クルザス",
+      "mapId": "r1h1/01",
+      "territoryId": 979
+    },
+    {
+      "sourceId": 3818,
+      "name": "ナップルーム",
+      "regionName": "北洋地域",
+      "mapId": "k5ti/00",
+      "territoryId": 990
+    },
+    {
+      "sourceId": 4504,
+      "name": "トライヨラ",
+      "regionName": "ヨカ・トラル",
+      "mapId": "y6t1/00",
+      "territoryId": 1185
+    },
+    {
+      "sourceId": 4503,
+      "name": "ソリューション・ナイン",
+      "regionName": "サカ・トラル",
+      "mapId": "x6t1/00",
+      "territoryId": 1186
+    },
+    {
+      "sourceId": 4505,
+      "name": "オルコ・パチャ",
+      "regionName": "ヨカ・トラル",
+      "mapId": "y6f1/00",
+      "territoryId": 1187
+    },
+    {
+      "sourceId": 4506,
+      "name": "コザマル・カ",
+      "regionName": "ヨカ・トラル",
+      "mapId": "y6f2/00",
+      "territoryId": 1188
+    },
+    {
+      "sourceId": 4507,
+      "name": "ヤクテル樹海",
+      "regionName": "ヨカ・トラル",
+      "mapId": "y6f3/00",
+      "territoryId": 1189
+    },
+    {
+      "sourceId": 4508,
+      "name": "シャーローニ荒野",
+      "regionName": "サカ・トラル",
+      "mapId": "x6f1/00",
+      "territoryId": 1190
+    },
+    {
+      "sourceId": 4509,
+      "name": "ヘリテージファウンド",
+      "regionName": "サカ・トラル",
+      "mapId": "x6f2/00",
+      "territoryId": 1191
+    },
+    {
+      "sourceId": 4510,
+      "name": "リビング・メモリー",
+      "regionName": "アンロスト・ワールド",
+      "mapId": "x6f3/00",
+      "territoryId": 1192
+    },
+    {
+      "sourceId": 4540,
+      "name": "フォルアード・キャビンズ",
+      "regionName": "ヨカ・トラル",
+      "mapId": "y6ti/00",
+      "territoryId": 1205
+    }
+  ]
+}

@@ -41,9 +41,9 @@ describe("layoutColumns", () => {
 describe("columnCountFor", () => {
   it.each([
     [360, 2],
-    [700, 3],
-    [1100, 4],
-    [1600, 5],
+    [700, 2],
+    [1100, 3],
+    [1600, 3],
   ])("uses more columns on a wider screen (%i px -> %i)", (width, count) => {
     expect(columnCountFor(width)).toBe(count);
   });

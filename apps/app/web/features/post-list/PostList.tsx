@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import type { JournalPlace } from "../journal/maps.ts";
+import { formatTakenOn } from "../../lib/format-date.ts";
 import { formatDate } from "../../lib/format-date.ts";
 import { columnCountFor, layoutColumns } from "./columns.ts";
 
@@ -12,6 +14,8 @@ export type PostCard = {
   author: { handle: string; name: string; image: string | null };
   tags: { name: string; displayName: string }[];
   publishedAt: string;
+  takenOn?: string | null;
+  place?: JournalPlace | null;
 };
 
 /** 画面の幅に合わせた列の数。SSR とハイドレーションの直後は 2 列 */
@@ -30,9 +34,9 @@ export function useColumnCount(): number {
 export function PostList({ items }: { items: readonly PostCard[] }) {
   const columns = layoutColumns(items, useColumnCount());
   return (
-    <div data-testid="post-list" className="flex items-start gap-3">
+    <div data-testid="post-list" className="journal-photo-columns">
       {columns.map((column, i) => (
-        <ul key={i} className="flex min-w-0 flex-1 flex-col gap-3">
+        <ul key={i} className="journal-photo-column">
           {column.map((item) => (
             <li key={item.id}>
               <Card item={item} />
@@ -46,10 +50,7 @@ export function PostList({ items }: { items: readonly PostCard[] }) {
 
 function Card({ item }: { item: PostCard }) {
   return (
-    <Link
-      to={`/posts/${item.id}`}
-      className="group block overflow-hidden rounded-md focus-visible:outline-2 focus-visible:outline-accent"
-    >
+    <Link to={`/posts/${item.id}`} className="journal-photo-card group">
       <img
         src={item.thumb}
         width={item.width}
@@ -57,15 +58,18 @@ function Card({ item }: { item: PostCard }) {
         alt={item.title ?? `${item.author.name} さんの写真`}
         loading="lazy"
         decoding="async"
-        className="h-auto w-full rounded-md bg-surface-hover transition-opacity group-hover:opacity-90"
+        className="h-auto w-full bg-surface-hover transition-opacity group-hover:opacity-90"
       />
-      <div className="space-y-0.5 px-0.5 pt-1.5 text-xs text-ink-muted">
-        {item.title ? <p className="truncate text-sm text-ink">{item.title}</p> : null}
+      <div className="journal-card-caption">
+        {item.place ? <p className="journal-card-place">{item.place.name}</p> : null}
+        {item.title ? <p className="journal-card-title">{item.title}</p> : null}
         <p className="truncate">
           {item.author.name} <span>@{item.author.handle}</span>
         </p>
         <p>
-          <time dateTime={item.publishedAt}>{formatDate(item.publishedAt)}</time>
+          <time dateTime={item.takenOn ?? item.publishedAt}>
+            {item.takenOn ? formatTakenOn(item.takenOn) : formatDate(item.publishedAt)}
+          </time>
           {item.tags.length ? (
             <span className="ml-2">{item.tags.map((t) => `#${t.displayName}`).join(" ")}</span>
           ) : null}

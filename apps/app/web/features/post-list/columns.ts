@@ -22,10 +22,7 @@ export function layoutColumns<T extends Sized>(items: readonly T[], count: numbe
   return columns;
 }
 
-/** 画面の幅から列の数を決める (Tailwind の sm・lg・2xl の区切りに近い) */
+/** 写真日誌は PC で 3 列、タブレットとスマートフォンで 2 列。 */
 export function columnCountFor(width: number): number {
-  if (width >= 1536) return 5;
-  if (width >= 1024) return 4;
-  if (width >= 640) return 3;
-  return 2;
+  return width >= 1024 ? 3 : 2;
 }

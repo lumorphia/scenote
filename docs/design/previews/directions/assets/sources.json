@@ -1,0 +1,60 @@
+{
+  "photos": [
+    {
+      "file": "photo-1.webp",
+      "source": "ffxiv_20221022_131320_541.png",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "file": "photo-2.webp",
+      "source": "ffxiv_20220822_001148_923.png",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "file": "photo-3.webp",
+      "source": "ffxiv_20200823_075638_085.png",
+      "width": 1752,
+      "height": 976
+    },
+    {
+      "file": "photo-4.webp",
+      "source": "ffxiv_20230720_211756_084.png",
+      "width": 2560,
+      "height": 1440
+    },
+    {
+      "file": "photo-5.webp",
+      "source": "ffxiv_20240116_230818_466.png",
+      "width": 2560,
+      "height": 1440
+    },
+    {
+      "file": "photo-6.webp",
+      "source": "ffxiv_20240226_020042_262.png",
+      "width": 2560,
+      "height": 1440
+    },
+    {
+      "file": "photo-7.webp",
+      "source": "ffxiv_20241104_003253_317.png",
+      "width": 2560,
+      "height": 1440
+    },
+    {
+      "file": "photo-8.webp",
+      "source": "ffxiv_20221022_135736_044.png",
+      "width": 1920,
+      "height": 1080
+    }
+  ],
+  "map": {
+    "file": "map-ilmheg.webp",
+    "territoryId": 816,
+    "mapId": "n4f4/00",
+    "source": "https://v2.xivapi.com/api/asset?path=ui/map/n4f4/00/n4f400_m.tex&format=png",
+    "copyright": "© SQUARE ENIX",
+    "note": "ピンと投稿の撮影情報はレイアウト確認用の仮データ。実際の撮影座標を示さない。"
+  }
+}

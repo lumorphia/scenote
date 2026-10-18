@@ -11,6 +11,9 @@ import {
 } from "../features/post-form/PlaceField.tsx";
 import { formatDate, formatTakenOn } from "../lib/format-date.ts";
 import { CopyUrlButton } from "../features/post-detail/CopyUrlButton.tsx";
+import { PhotoViewer } from "../features/post-detail/PhotoViewer.tsx";
+import { PostLocation } from "../features/journal/PlacesExplorer.tsx";
+import type { JournalPlace } from "../features/journal/maps.ts";
 import { DeletePost } from "../features/post-detail/DeletePost.tsx";
 import { ReportPost } from "../features/reports/ReportPost.tsx";
 import { postMeta } from "../lib/ogp.ts";
@@ -42,7 +45,7 @@ type OwnPost = {
   body: string | null;
   takenOn: string | null;
   tags: { name: string; displayName: string }[];
-  place: { id: string | null; regionName: string | null; name: string } | null;
+  place: JournalPlace | null;
   image: { display: string; width: number; height: number } | null;
   publishedAt: string | null;
 };
@@ -90,7 +93,10 @@ export default function Post() {
   const shareable =
     post.status === "published" && (post.visibility === "public" || post.visibility === "unlisted");
   return (
-    <main className="mx-auto max-w-6xl space-y-6 p-4 sm:p-8">
+    <main className="journal-container journal-post">
+      <Link to="/#photos" className="journal-back-link">
+        ← 写真一覧へ
+      </Link>
       {post.status === "processing" ? (
         <p data-testid="post-processing" className="text-sm text-ink-muted">
           写真を仕上げています。少し待ってください…
@@ -115,80 +121,92 @@ export default function Post() {
           この投稿は運営により非表示になっています。ほかの人には表示されません。
         </p>
       ) : null}
-      {post.image ? (
-        <figure className="flex justify-center">
-          <img
-            src={post.image.display}
-            width={post.image.width}
-            height={post.image.height}
-            alt={post.title ?? `${post.author.name} さんの写真`}
-            data-testid="post-image"
-            className="h-auto max-h-[85vh] w-auto max-w-full rounded-md object-contain"
-          />
-        </figure>
-      ) : null}
-
-      <article className="mx-auto max-w-3xl space-y-4">
-        {post.title ? <h1 className="text-2xl font-semibold">{post.title}</h1> : null}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p data-testid="post-author" className="flex min-w-0 items-center gap-2 text-sm">
-            {post.author.image ? (
-              <img src={post.author.image} alt="" width={28} height={28} className="rounded-full" />
-            ) : null}
-            <Link
-              to={`/u/${encodeURIComponent(post.author.handle)}`}
-              className="min-w-0 hover:underline"
-            >
-              <span className="truncate">{post.author.name}</span>
-              <span className="ml-2 text-ink-muted">@{post.author.handle}</span>
-            </Link>
-          </p>
-          {shareable ? <CopyUrlButton /> : null}
-        </div>
-        {post.body ? <p className="whitespace-pre-wrap leading-relaxed">{post.body}</p> : null}
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-          {post.takenOn ? (
-            <>
-              <dt className="text-ink-muted">撮影日</dt>
-              <dd data-testid="post-taken-on">{formatTakenOn(post.takenOn)}</dd>
-            </>
-          ) : null}
-          {post.place ? (
-            <>
-              <dt className="text-ink-muted">撮影場所</dt>
-              <dd data-testid="post-place">
-                {post.place.regionName ? `${post.place.regionName} / ` : ""}
-                {post.place.name}
-              </dd>
-            </>
-          ) : null}
-          {post.publishedAt ? (
-            <>
-              <dt className="text-ink-muted">投稿日</dt>
-              <dd>
-                <time data-testid="post-published-on" dateTime={post.publishedAt}>
-                  {formatDate(post.publishedAt)}
-                </time>
-              </dd>
-            </>
-          ) : null}
-        </dl>
-        {post.tags.length ? (
-          <ul className="flex flex-wrap gap-2 text-sm" aria-label="タグ" data-testid="post-tags">
-            {post.tags.map((tag) => (
-              <li key={tag.name}>
-                <Link
-                  to={`/tags/${encodeURIComponent(tag.name)}`}
-                  className="inline-block rounded-full bg-surface-muted px-3 py-1 hover:bg-surface-hover"
-                >
-                  #{tag.displayName}
-                </Link>
-              </li>
-            ))}
-          </ul>
+      <div className="journal-entry">
+        {post.image ? (
+          <figure className="journal-entry-photo">
+            <PhotoViewer
+              src={post.image.display}
+              width={post.image.width}
+              height={post.image.height}
+              alt={post.title ?? `${post.author.name} さんの写真`}
+            />
+            <figcaption>
+              {post.place?.name}
+              <span>{post.takenOn ? formatTakenOn(post.takenOn) : ""}</span>
+            </figcaption>
+          </figure>
         ) : null}
-        {!post.isOwner && post.status === "published" ? <ReportPost postId={post.id} /> : null}
-      </article>
+
+        <article className="journal-entry-text">
+          <p className="journal-eyebrow">{post.place?.regionName ?? "A DAY IN EORZEA"}</p>
+          <h1>{post.title ?? "無題の写真"}</h1>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p data-testid="post-author" className="flex min-w-0 items-center gap-2 text-sm">
+              {post.author.image ? (
+                <img
+                  src={post.author.image}
+                  alt=""
+                  width={28}
+                  height={28}
+                  className="rounded-full"
+                />
+              ) : null}
+              <Link
+                to={`/u/${encodeURIComponent(post.author.handle)}`}
+                className="min-w-0 hover:underline"
+              >
+                <span className="truncate">{post.author.name}</span>
+                <span className="ml-2 text-ink-muted">@{post.author.handle}</span>
+              </Link>
+            </p>
+            {shareable ? <CopyUrlButton /> : null}
+          </div>
+          {post.body ? <p className="journal-entry-body whitespace-pre-wrap">{post.body}</p> : null}
+          <dl className="journal-entry-facts">
+            {post.takenOn ? (
+              <>
+                <dt className="text-ink-muted">撮影日</dt>
+                <dd data-testid="post-taken-on">{formatTakenOn(post.takenOn)}</dd>
+              </>
+            ) : null}
+            {post.place ? (
+              <>
+                <dt className="text-ink-muted">撮影場所</dt>
+                <dd data-testid="post-place">
+                  {post.place.regionName ? `${post.place.regionName} / ` : ""}
+                  {post.place.name}
+                </dd>
+              </>
+            ) : null}
+            {post.publishedAt ? (
+              <>
+                <dt className="text-ink-muted">投稿日</dt>
+                <dd>
+                  <time data-testid="post-published-on" dateTime={post.publishedAt}>
+                    {formatDate(post.publishedAt)}
+                  </time>
+                </dd>
+              </>
+            ) : null}
+          </dl>
+          {post.tags.length ? (
+            <ul className="flex flex-wrap gap-2 text-sm" aria-label="タグ" data-testid="post-tags">
+              {post.tags.map((tag) => (
+                <li key={tag.name}>
+                  <Link
+                    to={`/tags/${encodeURIComponent(tag.name)}`}
+                    className="inline-block rounded-full bg-surface-muted px-3 py-1 hover:bg-surface-hover"
+                  >
+                    #{tag.displayName}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {!post.isOwner && post.status === "published" ? <ReportPost postId={post.id} /> : null}
+        </article>
+      </div>
+      {post.image ? <PostLocation place={post.place} /> : null}
 
       {post.isOwner ? (
         <section className="mx-auto max-w-3xl space-y-4 border-t border-line-soft pt-6">
