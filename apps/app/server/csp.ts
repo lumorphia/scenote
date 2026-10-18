@@ -5,7 +5,7 @@
  *   'wasm-unsafe-eval'。'unsafe-eval' と 'unsafe-inline' は入れない
  * - img-src: 自分、投稿画像の配信元、data: と blob: (現像のプレビュー)
  * - worker-src: 現像の認識の Worker (自分と blob:)。モデルは同じオリジンの /models/ から読む
- * - connect-src: 自分、画像の置き場所 (R2 への署名付き PUT)、Sentry
+ * - connect-src: 自分、画像の置き場所 (R2 への署名付き PUT)、問い合わせの Google フォーム (ADR-0027)、Sentry
  * - style-src: React の style 属性のために 'unsafe-inline'
  */
 export type CspDirectives = Record<string, string[]>;
@@ -19,6 +19,9 @@ export type CspInput = {
   /** ブラウザ SDK の送信先。未設定なら足さない */
   sentryDsn: string | null;
 };
+
+/** 問い合わせは Google フォームの formResponse に直接 POST する (web/features/contact/google-form.ts) */
+const GOOGLE_FORMS_ORIGIN = "https://docs.google.com";
 
 export const CSP_REPORT_PATH = "/api/csp-report";
 /** Fastify → SSR (entry.server) に nonce を渡すリクエストヘッダ。外から来た値は security plugin が上書きする */
@@ -46,7 +49,12 @@ export function buildCspDirectives(input: CspInput): CspDirectives {
     "style-src": ["'self'", "'unsafe-inline'"],
     "img-src": unique(["'self'", originOf(input.imageBaseUrl), "data:", "blob:"]),
     "font-src": ["'self'", "data:"],
-    "connect-src": unique(["'self'", originOf(input.uploadOrigin), originOf(input.sentryDsn)]),
+    "connect-src": unique([
+      "'self'",
+      originOf(input.uploadOrigin),
+      GOOGLE_FORMS_ORIGIN,
+      originOf(input.sentryDsn),
+    ]),
     "worker-src": ["'self'", "blob:"],
     "frame-ancestors": ["'none'"],
     "form-action": ["'self'"],
