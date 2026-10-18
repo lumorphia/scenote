@@ -27,5 +27,7 @@
 | [0023](0023-terms-consent.md)                 | 規約とプライバシーポリシーは docs/legal に置き、投稿などの前に同意と年齢を確かめる  | Accepted |
 | [0024](0024-docker-image.md)                  | 本番のイメージは 1 つで、モデルと規約を含め、ビルドの中で動くことを確かめる         | Accepted |
 | [0025](0025-production.md)                    | 本番は accounts と同じ形で、同じ VPS に分けて置き、リリースのときだけイメージを出す | Accepted |
+| [0026](0026-adventurers-photo-journal.md)     | 冒険者の写真日誌としてトップと投稿詳細を整える                                      | Accepted |
+| [0027](0027-contact.md)                       | 問い合わせは Lumorphia で共通の Google フォームへ、自前の画面から送る               | Accepted |
 
 本文中の「prismtone ADR-NNNN」は lumorphia/prismtone の ADR を指す。
