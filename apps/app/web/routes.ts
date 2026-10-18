@@ -7,6 +7,7 @@ export default [
   route("post/new", "routes/post-new.tsx"),
   route("posts/:id", "routes/post.tsx"),
   route("tags/:name", "routes/tag.tsx"),
+  route("search", "routes/search.tsx"),
   route("u/:handle", "routes/user.tsx"),
   route("me", "routes/me.tsx"),
   route("admin", "routes/admin.tsx"),

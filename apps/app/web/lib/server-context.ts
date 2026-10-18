@@ -1,5 +1,6 @@
 import type { PostPage } from "../features/post-list/PostFeed.tsx";
 import type { MapRegion } from "../features/journal/maps.ts";
+import type { SearchFilter } from "../features/search/search-params.ts";
 import { createContext } from "react-router";
 
 /** 投稿の OGP に使うもの。サーバーが domain/share.ts から作り、画像の URL は絶対にしてある */
@@ -16,6 +17,8 @@ export type ServerReads = {
   /** サイトの公開 origin (og:url) */
   siteUrl: string;
   journalHome(): Promise<{ page: PostPage; regions: MapRegion[] }>;
+  /** 検索のページ (S6f、ADR-0028)。最初のページと、地点の候補 */
+  search(filter: SearchFilter): Promise<{ page: PostPage; regions: MapRegion[] }>;
   /** 共有できない投稿は null */
   postShare(postId: string): Promise<PostShareMeta | null>;
 };

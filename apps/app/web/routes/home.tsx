@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { PostFeed } from "../features/post-list/PostFeed.tsx";
-import { TagSearch } from "../features/post-list/TagSearch.tsx";
+import { SearchBox } from "../features/search/SearchBox.tsx";
 import { JournalHero } from "../features/journal/JournalHero.tsx";
 import { PlacesExplorer } from "../features/journal/PlacesExplorer.tsx";
 import { serverReadsContext } from "../lib/server-context.ts";
@@ -40,7 +40,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             <p className="journal-eyebrow">RECENT ENTRIES</p>
             <h2 id="recent-title">新着の写真</h2>
           </div>
-          <TagSearch />
+          <SearchBox />
         </div>
         <PostFeed initialPage={loaderData.page} emptyMessage="まだ公開された写真がありません。" />
       </section>
