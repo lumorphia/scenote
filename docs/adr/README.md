@@ -25,5 +25,6 @@
 | [0021](0021-reports.md)                       | 通報はログインした人から受け、運営は投稿を非表示にするか通報を退ける               | Accepted |
 | [0022](0022-blocked-terms-dictionary.md)      | 運営が足す NG 語は DB の辞書に置き、組み込みの一覧と合わせて照合する               | Accepted |
 | [0023](0023-terms-consent.md)                 | 規約とプライバシーポリシーは docs/legal に置き、投稿などの前に同意と年齢を確かめる | Accepted |
+| [0024](0024-docker-image.md)                  | 本番のイメージは 1 つで、モデルと規約を含め、ビルドの中で動くことを確かめる        | Accepted |
 
 本文中の「prismtone ADR-NNNN」は lumorphia/prismtone の ADR を指す。
