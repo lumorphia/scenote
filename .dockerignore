@@ -1,0 +1,22 @@
+.git
+.env
+.env.*
+**/node_modules
+**/build
+**/dist
+**/.react-router
+**/coverage
+# 開発のデータ (置いた画像・TLS・取り込んだモデル)。手元で build するとイメージに入ってしまう
+.data
+# 現像のモデルはビルドの中で取り直す (pnpm models)
+apps/app/models
+e2e
+test-results
+playwright-report
+.worktrees
+.agents
+.codex
+# 設計の文書は入れない。規約とポリシーの本文 (docs/legal) はビルドとサーバーが読む (ADR-0023)
+docs
+!docs/legal
+**/*.test.ts
