@@ -1,9 +1,0 @@
-# lumorphia/prismtone の Caddy (80/443 を持つ唯一の Caddy) が読み込むサイトの設定 (docs/runbook/deploy.md)。
-# VPS の CADDY_SITES_DIR に scenote.caddy として置く。cloudflare_only と Origin CA の証明書
-# (*.lumorphia.com を含む 1 枚) は prismtone の Caddyfile のものを使う (lumorphia/accounts と同じ)
-scenote.lumorphia.com {
-	import cloudflare_only
-	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
-	encode zstd gzip
-	reverse_proxy scenote-web:3200
-}

@@ -1,5 +1,5 @@
 # 本番 (ADR-0025、docs/runbook/deploy.md)。lumorphia/accounts の compose.prod.yaml と同じ形。
-# web・worker・migrate は同じイメージ (ADR-0024)。80/443 は lumorphia/prismtone の Caddy が受け、
+# web・worker・migrate は同じイメージ (ADR-0024)。80/443 は lumorphia/edge の Caddy が受け、
 # 共有のネットワーク lumorphia-edge の scenote-web:3200 へ流す。ホストにポートを出さない
 name: scenote
 x-app: &app
