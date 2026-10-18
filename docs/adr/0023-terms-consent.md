@@ -19,7 +19,7 @@
 - `requireConsent` は、ログインに加えて今の版への同意を確かめ、無ければ 403 (`terms consent required`)。投稿 (受け取りの枠、作成、付け直し、送る前の確かめ) と通報に掛ける。投稿の削除と、退会の手続き (accounts) には掛けない (同意しない人も自分のものを消せる)
 - `/api/me` は `needsConsent` を返す。ヘッダーは、同意の要る人を `/welcome?next=…` へ送る。`/welcome`・`/terms`・`/privacy` は送らない。送るのは、今いるページで読み直した結果のときだけ (同意した直後に、古い結果で送り返さない)
 - 規約とポリシーは誰でも読める。フッターから開ける
-- 問い合わせ先は `/contact` (Prismtone と共通の Google フォーム。相棒の判断。S7d-2 で作る)
+- 問い合わせ先は `/contact` (Prismtone と共通の Google フォーム。相棒の判断。S7d-2 で作った。ADR-0027)
 
 ## Consequences
 
