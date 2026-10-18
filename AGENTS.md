@@ -107,10 +107,11 @@ docker compose up -d                        # 開発の Postgres (5435) と Cadd
 pnpm --filter @lumorphia-scenote/app dev    # 開発サーバー (Caddy の後ろ、https://scenote.lumorphia.test:8445)
 pnpm --filter @lumorphia-scenote/app worker # ジョブの worker (開発は JOBS_INLINE=0 のときだけ要る)
 pnpm --filter @lumorphia-scenote/app places:sync # 撮影場所の候補を XIVAPI から入れる (開発の最初と本番の最初。ADR-0013)
-pnpm db:generate && pnpm db:migrate         # スキーマ変更後
+pnpm db:generate && pnpm db:migrate         # スキーマ変更後。開発の DB にも当てる (テストと E2E は自分の DB に当てるので、当て忘れに気づけない。起動時の警告 ADR-0024)
 pnpm test                                   # 単体・DB テスト
 pnpm e2e                                    # Playwright (https)
 pnpm dev:certs                              # 開発と E2E の TLS を作る (あれば作り直さない)
+NODE_AUTH_TOKEN=$(gh auth token) docker build -f docker/Dockerfile --target app --secret id=npm_token,env=NODE_AUTH_TOKEN -t scenote-app . # 本番のイメージ (ADR-0024)
 pnpm --filter @lumorphia-scenote/app models # 認識のモデルと WASM を apps/app/models に揃える (dev / build の前に走る)
 ```
 
