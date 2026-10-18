@@ -2,7 +2,7 @@ name: ci
 
 # 検査は PR でだけ回す。develop / main への push (= マージ) では、PR で確かめた中身を回し直さない。
 # public リポジトリなので Actions の時間は org の上限を使わない (ADR-0007)。E2E も PR ごとに回す。
-# main への push では release-please だけを回す。イメージの公開は本番の段で足す (ADR-0008)
+# main への push では release-please だけを回す。イメージの公開は S7e-2 で足す (ADR-0008、ADR-0024)
 on:
   pull_request:
   push:
@@ -116,6 +116,27 @@ jobs:
     uses: lumorphia/platform/.github/workflows/security.yml@f09c5000438dc7f4a9184b1a0e1717ff852c8b51 # main
     with:
       github-packages: true
+
+  # PR では、本番のイメージがビルドできるかだけを確かめる (公開しない。ADR-0024)。
+  # ビルドの中で、web・worker・migrate の import、規約の版、共有用の画像、本物の判定器を確かめる
+  docker:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: [check, e2e, security]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.1.1
+      - name: app image (公開しない)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: app
+          build-args: APP_VERSION=${{ github.sha }}
+          secrets: npm_token=${{ secrets.GITHUB_TOKEN }}
+          push: false
+          cache-from: type=gha,scope=scenote-app
+          cache-to: type=gha,scope=scenote-app,mode=max
 
   # main に積まれた Conventional Commits から release-please がリリース PR (package.json の version と
   # CHANGELOG.md) を開き直す。そのリリース PR をマージした push でリリース (vX.Y.Z のタグと GitHub Release) ができる
