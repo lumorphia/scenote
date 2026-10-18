@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 
-/** フッター。規約とプライバシーポリシーへのリンク (ADR-0023) */
+/** フッター。規約・プライバシーポリシー (ADR-0023) と問い合わせ (ADR-0027) へのリンク */
 export function SiteFooter() {
   return (
     <footer className="journal-footer">
@@ -14,6 +14,9 @@ export function SiteFooter() {
         </Link>
         <Link to="/privacy" className="hover:underline">
           プライバシーポリシー
+        </Link>
+        <Link to="/contact" className="hover:underline">
+          お問い合わせ
         </Link>
       </nav>
       <p className="mt-3 text-xs">

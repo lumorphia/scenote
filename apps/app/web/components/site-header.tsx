@@ -8,8 +8,8 @@ type Me = {
   loginAvailable: boolean;
 };
 
-/** 同意する前でも開けるページ (同意の画面と、同意する中身) */
-const CONSENT_FREE = ["/welcome", "/terms", "/privacy"];
+/** 同意する前でも開けるページ (同意の画面と、同意する中身、規約について尋ねる問い合わせ。ADR-0027) */
+const CONSENT_FREE = ["/welcome", "/terms", "/privacy", "/contact"];
 
 /**
  * ヘッダー。ログインの状態は本人の API (/api/me) から読む。読み終わるまではログインの欄を出さない。

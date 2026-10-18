@@ -39,7 +39,16 @@ describe("buildCspDirectives", () => {
 
   it("lets the browser send errors to the Sentry host", () => {
     const d = buildCspDirectives({ ...base, sentryDsn: "https://key@o1.ingest.sentry.io/2" });
-    expect(d["connect-src"]).toEqual(["'self'", "https://o1.ingest.sentry.io"]);
+    expect(d["connect-src"]).toEqual([
+      "'self'",
+      "https://docs.google.com",
+      "https://o1.ingest.sentry.io",
+    ]);
+  });
+
+  it("lets the contact page post to the shared Google Form and nowhere else at Google", () => {
+    expect(buildCspDirectives(base)["connect-src"]).toEqual(["'self'", "https://docs.google.com"]);
+    expect(buildCspDirectives(base)["form-action"]).toEqual(["'self'"]);
   });
 
   it("forbids framing, plugins and foreign base URLs", () => {
@@ -78,6 +87,7 @@ describe("buildCspDirectives for uploads", () => {
   it("needs nothing extra when the app itself takes the images", () => {
     expect(buildCspDirectives({ ...base, uploadOrigin: "/_storage" })["connect-src"]).toEqual([
       "'self'",
+      "https://docs.google.com",
     ]);
   });
 });
