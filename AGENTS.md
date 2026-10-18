@@ -21,7 +21,7 @@ apps/app        React Router (SSR) + Fastify。画面と API
 packages/core   ドメイン (ログイン、退会の知らせ、受け取りと投稿) と pg-boss のジョブ (jobs/)
 packages/db     Drizzle のスキーマとマイグレーション、ファイルごとの専用 DB を作るテストの仕組み
 e2e/            Playwright。https の scenote.lumorphia.test で回す
-docker/         本番のイメージ (Dockerfile)、バックアップ、監視のスクリプト、doco-cd、Caddy (本番の Caddyfile.scenote と開発の Caddyfile.dev)
+docker/         本番のイメージ (Dockerfile)、バックアップ、監視のスクリプト、doco-cd、開発の Caddy (Caddyfile.dev)
 scripts/        dev-certs.sh (開発と E2E の TLS)
 ```
 
@@ -68,7 +68,7 @@ Lumorphia アカウントのクライアントは https かつループバック
 - **開発**: Vite の開発サーバーは http (127.0.0.1:3200)。compose の Caddy が `https://scenote.lumorphia.test:8445` で受けて流す。Vite 8 は https にすると必ず HTTP/2 になり、その疑似ヘッダー (`:method`) を `@mcansh/react-router-fastify` が扱えないため、Vite には https を持たせない。ブラウザで開くには hosts に `127.0.0.1 scenote.lumorphia.test` を足し、`.data/tls/ca.pem` を信頼させる
 - 開発サーバーは `packages/*` の変更や、表の追加 (マイグレーション) を取り込み損ねることがある (Better Auth の `SCHEMA_MISMATCH` や、古い関数のまま動く)。そのときは開発サーバーを立て直す
 - **E2E**: Fastify が直接 https で待ち受ける (`DEV_TLS_*`、`server/tls.ts`)。本番と同じビルドで、HTTP/1.1
-- **本番**: Prismtone の Caddy が TLS を受け、`lumorphia-edge` の `scenote-web:3200` へ流す (ADR-0025、`docs/runbook/deploy.md`)。`DEV_TLS_*` は production では無視する
+- **本番**: lumorphia/edge の Caddy が TLS を受け、`lumorphia-edge` の `scenote-web:3200` へ流す (ADR-0025、`docs/runbook/deploy.md`)。`DEV_TLS_*` は production では無視する
 
 ## 作業の流れ
 

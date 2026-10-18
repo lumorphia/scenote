@@ -8,7 +8,7 @@
 
 ## Context
 
-lumorphia/accounts は 2026-10-11 に、lumorphia/prismtone と同じ VPS で公開した。80/443 は Prismtone の Caddy が受け、共有のネットワーク `lumorphia-edge` で各サービスへ流す。リリースは release-please で作り、リリースのときだけイメージを公開し、サービスごとの doco-cd が `latest` を入れ替える (accounts の ADR-0016)。バックアップ・隔離した復元試験・滞留の通知のスクリプトも、実際に動かして直してある。
+lumorphia/accounts は 2026-10-11 に、lumorphia/prismtone と同じ VPS で公開した。80/443 は、はじめ Prismtone の Caddy が受けていたが、相棒の指摘 (2026-10-18) で入口だけのリポジトリ lumorphia/edge に分けた (edge の ADR-0001、prismtone ADR-0065)。edge の Caddy が共有のネットワーク `lumorphia-edge` で各サービスへ流す。リリースは release-please で作り、リリースのときだけイメージを公開し、サービスごとの doco-cd が `latest` を入れ替える (accounts の ADR-0016)。バックアップ・隔離した復元試験・滞留の通知のスクリプトも、実際に動かして直してある。
 
 Scenote のイメージは ADR-0024 で作った。
 
@@ -17,7 +17,7 @@ Scenote のイメージは ADR-0024 で作った。
 accounts の形をそのまま写し、名前を `scenote` にする。
 
 - `compose.prod.yaml`: postgres・migrate・web・worker・backup。web は `lumorphia-edge` に `scenote-web` として出る。ホストにポートを出さない。イメージは `${SCENOTE_TAG:-latest}`
-- Caddy は Prismtone のもの。`docker/Caddyfile.scenote` を `scenote.caddy` として読ませる。証明書と `cloudflare_only` は Prismtone のもの
+- 入口は lumorphia/edge。Scenote のサイトは edge の `Caddyfile` にある。証明書と `cloudflare_only` も edge のもの
 - CI: PR でイメージと本番の compose の構文を確かめる。main への push で release-please がリリース PR を開き、そのマージでできたリリースのときだけ app と backup のイメージを `sha-…` で上げ、`vX.Y.Z` と `latest` を付ける
 - doco-cd は Scenote 専用 (`doco-cd-scenote`)。外から入る口は作らない
 - バックアップ: 専用の非公開バケットに 1 日 1 回、30 日で消す。復元試験は別の project の tmpfs の DB で、`DATABASE_URL` が復元先を指していなければ止まる

@@ -57,13 +57,13 @@ Prismtone・accounts とバケットも認証も分ける。
 
 確かめ方: 投稿を非公開にしたあと、`/api/posts/<id>` が返す中継ではなく、R2 のキー (`private/<id>/...`) を直接 `curl -I https://scenote-images.lumorphia.com/private/...` して 403 になること。
 
-## 4. 共有する Caddy
+## 4. 入口 (lumorphia/edge)
 
-80/443 を持つ Caddy は Prismtone のもの 1 つだけ (accounts と同じ)。
+80/443 を持つ Caddy は [lumorphia/edge](https://github.com/lumorphia/edge) の 1 つだけ。全サービスのサイトは edge の `Caddyfile` にまとめてあり、Scenote のサイト (`scenote.lumorphia.com` → `scenote-web:3200`) も入っている (edge の ADR-0001)。Scenote の側で Caddy の設定を置く手順は無い。
 
-- 共有のネットワーク `lumorphia-edge` (accounts のときに作った)。Scenote の web はそこに `scenote-web` として出る (`compose.prod.yaml`)
-- `docker/Caddyfile.scenote` を Prismtone の `CADDY_SITES_DIR` に `scenote.caddy` として置き、`caddy validate` のあと reload する
-- 証明書は Prismtone の Caddy にある Origin CA の 1 枚 (`*.lumorphia.com`)。`cloudflare_only` も Prismtone のもの
+- 共有のネットワーク `lumorphia-edge`。Scenote の web はそこに `scenote-web` として出る (`compose.prod.yaml`)
+- 証明書 (Origin CA の 1 枚、`*.lumorphia.com`) と、Cloudflare の IP だけを受ける決まりも edge にある
+- Scenote の web が起動するまで、edge は `scenote.lumorphia.com` に 502 を返す (ほかのドメインには響かない)
 - Cloudflare の DNS: `scenote.lumorphia.com` を proxy (オレンジ) で VPS に、SSL は Full (strict)
 - **env を変えたら doco-cd も作り直す**。doco-cd は env ファイルを自分のコンテナを作ったときにしか読まない (2026-10-11 の Prismtone の障害)
 
