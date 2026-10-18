@@ -190,7 +190,7 @@ export default function Contact() {
             <a href={GOOGLE_FORM.viewUrl} target="_blank" rel="noreferrer" className="underline">
               Google フォームを開く
             </a>
-            から、問い合わせ先に Scenote を選んで直接お送りください。
+            から直接お送りください。
           </p>
         )}
         <button

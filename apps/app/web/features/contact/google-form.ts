@@ -6,8 +6,9 @@
  * 項目を増減・並べ替えしたら取り直す。項目の文言と選択肢はフォームと一字一句同じにする
  */
 export const GOOGLE_FORM = {
-  /** 利用者に開いてもらう URL (送信に失敗したときの逃げ道) */
-  viewUrl: "https://forms.gle/MdovxmW7oTfeiyfx7",
+  /** 利用者に開いてもらう URL (送信に失敗したときの逃げ道)。サービスの欄が Scenote に選ばれた状態で開く */
+  viewUrl:
+    "https://docs.google.com/forms/d/e/1FAIpQLScxZTBtbuGeSGdMwWoKcVyrEjQgG252zgYmRSCG77dJjrd0JQ/viewform?usp=pp_url&entry.2074387887=Scenote",
   action:
     "https://docs.google.com/forms/d/e/1FAIpQLScxZTBtbuGeSGdMwWoKcVyrEjQgG252zgYmRSCG77dJjrd0JQ/formResponse",
   entries: {

@@ -29,6 +29,13 @@ describe("toGoogleFormBody", () => {
     expect(body.get(GOOGLE_FORM.entries.service)).toBe("Scenote");
   });
 
+  it("opens the Google Form itself with Scenote already chosen when sending fails", () => {
+    const url = new URL(GOOGLE_FORM.viewUrl);
+    expect(url.origin + url.pathname).toBe(GOOGLE_FORM.action.replace(/formResponse$/, "viewform"));
+    expect(url.searchParams.get("usp")).toBe("pp_url");
+    expect(url.searchParams.get(GOOGLE_FORM.entries.service)).toBe("Scenote");
+  });
+
   it("leaves the optional fields out when they are blank, so the sheet shows empty cells", () => {
     const body = toGoogleFormBody({ category: "その他", name: " ", email: "", message: "x" });
     expect(body.has(GOOGLE_FORM.entries.name)).toBe(false);
