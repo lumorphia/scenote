@@ -1,0 +1,10 @@
+# 本番のデプロイ (ADR-0025、docs/runbook/deploy.md)。doco-cd は docker/doco-cd/compose.yaml で scenote 専用に立てる。
+# main をポーリングし、compose.prod.yaml の変更か、イメージ (latest) の digest の変化があれば docker compose up する
+name: scenote
+reference: main
+compose_files:
+  - compose.prod.yaml
+force_image_pull: true
+prune_images: true
+remove_orphans: false
+timeout: 900

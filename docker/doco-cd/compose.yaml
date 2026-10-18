@@ -1,0 +1,56 @@
+# doco-cd (ADR-0025。lumorphia/accounts の ADR-0016 と同じ形): scenote の main をポーリングし、.doco-cd.yml に従って compose.prod.yaml を入れ替える。
+# Prismtone の doco-cd とは別のコンテナにする (compose の変数 POSTGRES_PASSWORD などを混ぜない)。
+# scenote の stack とも別に、VPS で手で起動する。手順は docs/runbook/deploy.md の「doco-cd」。
+#
+#   docker compose -f /srv/doco-cd-scenote/compose.yaml up -d
+#
+# 「ホスト」と書いたパスは、VPS で実際に置いた場所に書き換える (/srv/scenote、/srv/doco-cd を前提にしている)。
+# 「コンテナの中」と書いたパスは書き換えない
+#
+# 外から入る口は作らない (ports を出さず、WEBHOOK_SECRET / API_SECRET を設定しない)。ポーリングで外へ見に行くだけ。
+# docker.sock を渡すので、doco-cd は Docker を完全に操作できる。版は固定し、Renovate の PR で上げる。
+
+services:
+  doco-cd-scenote:
+    container_name: doco-cd-scenote
+    image: ghcr.io/kimdre/doco-cd:0.123.0
+    restart: unless-stopped
+    # compose の変数展開に使う値 (POSTGRES_PASSWORD、戻すときの SCENOTE_TAG)。PASS_ENV で doco-cd から compose に渡す。
+    # 値を変えたら doco-cd を再起動する (起動時の値を使う)
+    env_file: /srv/scenote/.env.production # ホスト
+    environment:
+      TZ: Asia/Tokyo
+      LOG_LEVEL: info
+      PASS_ENV: "true"
+      # compose.prod.yaml が Git に無い秘密を読む場所。doco-cd の中の compose が読むので、コンテナの中のパス
+      SCENOTE_ENV_FILE: /srv/scenote/.env.production # コンテナの中
+      SCENOTE_BACKUP_ENV_FILE: /srv/scenote/.env.backup # コンテナの中
+      # public リポジトリなので clone に token は要らない
+      POLL_CONFIG: |
+        - url: https://github.com/lumorphia/scenote.git
+          reference: main
+          interval: 5m
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # 左 (ホスト) を書き換え、右 (コンテナの中) は SCENOTE_ENV_FILE / SCENOTE_BACKUP_ENV_FILE と同じのまま
+      - /srv/scenote/.env.production:/srv/scenote/.env.production:ro
+      - /srv/scenote/.env.backup:/srv/scenote/.env.backup:ro
+      # GHCR の認証 (read:packages の PAT で作った config.json)。Prismtone の doco-cd と同じものでよい。左 (ホスト) を書き換える
+      - /srv/doco-cd/docker-config.json:/root/.docker/config.json:ro
+      - data:/data
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "/doco-cd", "healthcheck"]
+      start_period: 15s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  data:
