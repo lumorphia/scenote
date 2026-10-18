@@ -341,6 +341,19 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
       expect(page.items.map((i) => i.id)).toEqual([postId]);
     });
 
+    it("finds posts by the words in the search box (S6f)", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { postId } = await post(cookie, { title: "テスト_浜辺の夕焼け" });
+      await published(cookie, postId);
+      await published(cookie, (await post(cookie, { title: "テスト_朝の市場" })).postId);
+      const page = (await listPosts(`?q=${encodeURIComponent("夕焼け 浜辺")}`)).json() as Page;
+      expect(page.items.map((i) => i.id)).toEqual([postId]);
+    });
+
+    it("refuses search words that are too long", async () => {
+      expect((await listPosts(`?q=${"a".repeat(201)}`)).statusCode).toBe(400);
+    });
+
     it("narrows the list to one person, and shows who they are", async () => {
       const user = lumorphiaUser();
       const { cookie } = await loginWithLumorphia(app, mock, user);

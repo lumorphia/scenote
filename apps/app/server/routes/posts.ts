@@ -192,7 +192,7 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
     {
       schema: {
         tags: ["posts"],
-        summary: "公開の投稿を新しい順に。タグか投稿者で絞れる",
+        summary: "公開の投稿を新しい順に。タグ・投稿者・撮影場所・検索の言葉で絞れる",
         querystring: z.object({
           cursor: z.string().max(500).optional(),
           limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).optional(),
@@ -201,6 +201,8 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
           /** 投稿者の handle で絞る (S6c) */
           author: z.string().max(64).optional(),
           placeId: z.uuid().optional(),
+          /** 検索の言葉 (S6f、ADR-0028)。空白で区切り、どれもタイトル・タグ・地点のどこかにあるもの */
+          q: z.string().max(200).optional(),
         }),
         response: withErrors({
           200: z.object({

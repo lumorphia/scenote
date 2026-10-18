@@ -1,8 +1,9 @@
-import { and, eq, inArray, lt, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, exists, inArray, lt, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
 import { schema, type Database } from "@lumorphia-scenote/db";
 import { DomainError } from "./errors.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { imageUrl } from "./posts.ts";
+import { likePattern, searchWords } from "./search-words.ts";
 import { normalizeTag, type TagInput } from "./tags.ts";
 
 /** 1 ページの既定と上限 */
@@ -49,9 +50,40 @@ export type ListInput = {
   author?: string | undefined;
   /** 候補から選んだ撮影場所で絞る */
   placeId?: string | undefined;
+  /** 検索の言葉 (S6f、ADR-0028)。空白で区切った言葉が、どれもタイトル・タグ・地点のどこかにあるもの */
+  q?: string | undefined;
 };
 
-/** 公開の投稿を新しい順に。タグか投稿者で絞れる。次のページがあるときだけ nextCursor を返す */
+/** 投稿の側の文字を、検索の言葉 (searchWords) と同じ形にそろえる */
+const folded = (column: AnyColumn) => sql`lower(normalize(coalesce(${column}, ''), NFKC))`;
+
+/**
+ * 1 つの言葉が、タイトル、タグ、地点 (候補の地名と地域名、自由入力の場所) のどこかにあること。
+ * タグの name は保存するときにそろえてあるので、そのまま比べる
+ */
+function wordFound(db: Database, word: string): SQL | undefined {
+  const pattern = likePattern(word);
+  return or(
+    sql`${folded(schema.posts.title)} like ${pattern}`,
+    sql`${folded(schema.posts.placeText)} like ${pattern}`,
+    sql`${folded(schema.places.name)} like ${pattern}`,
+    sql`${folded(schema.places.regionName)} like ${pattern}`,
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(schema.postTags)
+        .innerJoin(schema.tags, eq(schema.tags.id, schema.postTags.tagId))
+        .where(
+          and(
+            eq(schema.postTags.postId, schema.posts.id),
+            sql`${schema.tags.name} like ${pattern}`,
+          ),
+        ),
+    ),
+  );
+}
+
+/** 公開の投稿を新しい順に。タグ・投稿者・撮影場所・検索の言葉で絞れる。次のページがあるときだけ nextCursor を返す */
 export async function listPublicPosts(
   { db, imageBaseUrl }: { db: Database; imageBaseUrl: string },
   input: ListInput,
@@ -74,6 +106,7 @@ export async function listPublicPosts(
   }
   if (input.author !== undefined) conditions.push(eq(schema.users.handle, input.author));
   if (input.placeId !== undefined) conditions.push(eq(schema.posts.placeId, input.placeId));
+  for (const word of searchWords(input.q ?? "")) conditions.push(wordFound(db, word));
   if (after) {
     conditions.push(
       or(
