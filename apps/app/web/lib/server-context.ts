@@ -17,7 +17,7 @@ export type ServerReads = {
   /** サイトの公開 origin (og:url) */
   siteUrl: string;
   journalHome(): Promise<{ page: PostPage; regions: MapRegion[] }>;
-  /** 検索のページ (S6f、ADR-0028)。最初のページと、地点の候補 */
+  /** 写真を探すページ (/posts、S6f、ADR-0028)。最初のページと、地点の候補 */
   search(filter: SearchFilter): Promise<{ page: PostPage; regions: MapRegion[] }>;
   /** 共有できない投稿は null */
   postShare(postId: string): Promise<PostShareMeta | null>;

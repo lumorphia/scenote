@@ -68,7 +68,7 @@ export function SiteHeader() {
       </Link>
       <nav className="journal-header-links" aria-label="メイン">
         <Link to="/#photos">写真を見る</Link>
-        <Link to="/search">写真を探す</Link>
+        <Link to="/posts">写真を探す</Link>
         <Link to="/#map">地図から探す</Link>
         <Link to="/edit" className="journal-edit-link">
           写真を編集する ↗
@@ -79,7 +79,7 @@ export function SiteHeader() {
         <summary>メニュー</summary>
         <nav aria-label="メイン">
           <Link to="/#photos">写真を見る</Link>
-          <Link to="/search">写真を探す</Link>
+          <Link to="/posts">写真を探す</Link>
           <Link to="/#map">地図から探す</Link>
           <Link to="/edit">写真を編集する</Link>
           {me?.user ? (

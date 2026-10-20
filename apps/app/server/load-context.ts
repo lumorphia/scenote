@@ -30,7 +30,7 @@ export function createLoadContext(app: FastifyInstance): RouterContextProvider {
   const reads: ServerReads = {
     siteUrl,
     journalHome: () => firstPageAndPlaces({}),
-    search: (filter) => firstPageAndPlaces(filter),
+    search: ({ q, tags, placeId }) => firstPageAndPlaces({ q, tag: tags, placeId }),
     async postShare(postId) {
       const share = await getPostShare(
         { db: app.db, imageBaseUrl: app.env.PUBLIC_IMAGE_BASE_URL },

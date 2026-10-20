@@ -36,7 +36,9 @@ test("a tag can be searched from the top page", async ({ page }) => {
   // トップの欄は検索 (S6f)。# を付けて書いてもタグとして探す
   await page.getByRole("searchbox", { name: "写真を探す" }).fill(`#${tag}`);
   await page.getByRole("searchbox", { name: "写真を探す" }).press("Enter");
-  await expect(page).toHaveURL(/\/search\?q=/);
+  await expect(page).toHaveURL(/\/posts\?q=/);
+  // URL は描き替えより先に変わる。トップの表紙にも同じ写真が出るので、検索のページに移ってから見る
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("写真を探す");
   await expect(page.getByRole("link", { name: new RegExp(title) })).toBeVisible();
 });
 

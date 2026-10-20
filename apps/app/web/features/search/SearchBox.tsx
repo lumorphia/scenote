@@ -3,7 +3,7 @@ import { Form } from "react-router";
 /** 写真を探す欄 (S6f、ADR-0028)。言葉を入れると検索のページへ進む。トップとタグのページに置く */
 export function SearchBox() {
   return (
-    <Form method="get" action="/search" role="search" className="flex gap-2">
+    <Form method="get" action="/posts" role="search" className="flex gap-2">
       <input
         type="search"
         name="q"
