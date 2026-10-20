@@ -11,4 +11,10 @@ describe("postsUrl", () => {
       `/api/posts?tag=${encodeURIComponent("夕焼け")}&cursor=test-cursor`,
     );
   });
+
+  it("repeats a filter that has several values", () => {
+    expect(postsUrl({ tag: ["海", "旅"] }, null)).toBe(
+      `/api/posts?tag=${encodeURIComponent("海")}&tag=${encodeURIComponent("旅")}`,
+    );
+  });
 });
