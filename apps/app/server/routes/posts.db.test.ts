@@ -350,6 +350,21 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
       expect(page.items.map((i) => i.id)).toEqual([postId]);
     });
 
+    it("narrows the list to every tag repeated in the query", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { postId } = await post(cookie, { tags: ["夕焼け", "海"] });
+      await published(cookie, postId);
+      await published(cookie, (await post(cookie, { tags: ["夕焼け"] })).postId);
+      const query = `?tag=${encodeURIComponent("夕焼け")}&tag=${encodeURIComponent("海")}`;
+      const page = (await listPosts(query)).json() as Page;
+      expect(page.items.map((i) => i.id)).toEqual([postId]);
+    });
+
+    it("refuses more tags than a post can have", async () => {
+      const query = Array.from({ length: 11 }, (_, i) => `tag=t${i}`).join("&");
+      expect((await listPosts(`?${query}`)).statusCode).toBe(400);
+    });
+
     it("refuses search words that are too long", async () => {
       expect((await listPosts(`?q=${"a".repeat(201)}`)).statusCode).toBe(400);
     });

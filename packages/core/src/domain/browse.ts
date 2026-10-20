@@ -44,8 +44,8 @@ const listable = and(
 export type ListInput = {
   cursor?: string | undefined;
   limit?: number | undefined;
-  /** タグで絞る (S6c)。書き方のゆれはそろえてから探す */
-  tag?: string | undefined;
+  /** タグで絞る (S6c)。書き方のゆれはそろえてから探す。複数なら全部が付いているもの (S6f、lumorphia/prismtone と同じ AND) */
+  tag?: string | readonly string[] | undefined;
   /** 投稿者の handle で絞る (S6c、利用者のページ) */
   author?: string | undefined;
   /** 候補から選んだ撮影場所で絞る */
@@ -91,8 +91,10 @@ export async function listPublicPosts(
   const limit = Math.min(Math.max(input.limit ?? DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
   const after = input.cursor ? decodeCursor(input.cursor) : null;
   const conditions: (SQL | undefined)[] = [listable];
-  if (input.tag !== undefined) {
-    const { name } = normalizeTag(input.tag);
+  const tagFilter =
+    input.tag === undefined ? [] : typeof input.tag === "string" ? [input.tag] : input.tag;
+  for (const tag of tagFilter) {
+    const { name } = normalizeTag(tag);
     conditions.push(
       inArray(
         schema.posts.id,

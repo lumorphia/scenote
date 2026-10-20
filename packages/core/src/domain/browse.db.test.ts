@@ -83,7 +83,7 @@ describe.skipIf(!databaseUrl)("listing public posts (PostgreSQL)", () => {
     input: {
       cursor?: string;
       limit?: number;
-      tag?: string;
+      tag?: string | string[];
       author?: string;
       placeId?: string;
       q?: string;
@@ -268,6 +268,14 @@ describe.skipIf(!databaseUrl)("listing public posts (PostgreSQL)", () => {
       const second = await list({ tag: "旅", limit: 2, cursor: first.nextCursor! });
       expect(first.items.length + second.items.length).toBe(3);
       expect(second.nextCursor).toBeNull();
+    });
+
+    it("needs every tag when several are given", async () => {
+      const me = await user();
+      const both = await post(me.id, { tags: ["夕焼け", "海"] });
+      await post(me.id, { tags: ["夕焼け"] });
+      await post(me.id, { tags: ["海"] });
+      expect((await list({ tag: ["夕焼け", "#海"] })).items.map((i) => i.id)).toEqual([both.id]);
     });
 
     it("finds nothing for a tag nobody uses", async () => {

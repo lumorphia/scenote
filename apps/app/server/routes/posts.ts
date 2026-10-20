@@ -196,8 +196,8 @@ export const postRoutes: FastifyPluginAsyncZod = async (app) => {
         querystring: z.object({
           cursor: z.string().max(500).optional(),
           limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).optional(),
-          /** タグで絞る (S6c)。書き方のゆれはそろえる */
-          tag: z.string().max(200).optional(),
+          /** タグで絞る (S6c)。書き方のゆれはそろえる。繰り返すと全部が付いているもの (S6f) */
+          tag: z.union([z.string().max(200), z.array(z.string().max(200)).max(10)]).optional(),
           /** 投稿者の handle で絞る (S6c) */
           author: z.string().max(64).optional(),
           placeId: z.uuid().optional(),
