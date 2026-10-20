@@ -1,6 +1,6 @@
 import { useParams } from "react-router";
 import { PostFeed } from "../features/post-list/PostFeed.tsx";
-import { TagSearch } from "../features/post-list/TagSearch.tsx";
+import { SearchBox } from "../features/search/SearchBox.tsx";
 import type { Route } from "./+types/tag";
 
 export function meta({ params }: Route.MetaArgs) {
@@ -14,7 +14,7 @@ export default function Tag() {
     <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
       <section className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-2xl font-semibold">#{name}</h1>
-        <TagSearch />
+        <SearchBox />
       </section>
       <PostFeed
         filter={{ tag: name }}

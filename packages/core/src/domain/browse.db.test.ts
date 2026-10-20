@@ -51,6 +51,7 @@ describe.skipIf(!databaseUrl)("listing public posts (PostgreSQL)", () => {
       title?: string;
       tags?: string[];
       placeId?: string;
+      placeText?: string;
       takenOn?: string;
     } = {},
   ) {
@@ -70,6 +71,7 @@ describe.skipIf(!databaseUrl)("listing public posts (PostgreSQL)", () => {
         blurhash: "test-blurhash",
         title: fields.title ?? null,
         placeId: fields.placeId ?? null,
+        placeText: fields.placeText ?? null,
         takenOn: fields.takenOn ?? null,
         publishedAt: status === "published" ? (fields.publishedAt ?? new Date()) : null,
       })
@@ -81,9 +83,10 @@ describe.skipIf(!databaseUrl)("listing public posts (PostgreSQL)", () => {
     input: {
       cursor?: string;
       limit?: number;
-      tag?: string;
+      tag?: string | string[];
       author?: string;
       placeId?: string;
+      q?: string;
     } = {},
   ) => listPublicPosts({ db, imageBaseUrl: IMAGE_BASE }, input);
   const at = (minutes: number) => new Date(Date.UTC(2026, 9, 1, 12, minutes));
@@ -267,8 +270,123 @@ describe.skipIf(!databaseUrl)("listing public posts (PostgreSQL)", () => {
       expect(second.nextCursor).toBeNull();
     });
 
+    it("needs every tag when several are given", async () => {
+      const me = await user();
+      const both = await post(me.id, { tags: ["夕焼け", "海"] });
+      await post(me.id, { tags: ["夕焼け"] });
+      await post(me.id, { tags: ["海"] });
+      expect((await list({ tag: ["夕焼け", "#海"] })).items.map((i) => i.id)).toEqual([both.id]);
+    });
+
     it("finds nothing for a tag nobody uses", async () => {
       expect((await list({ tag: "テスト_無いタグ" })).items).toEqual([]);
+    });
+  });
+
+  // 検索 (S6f、ADR-0028)。言葉ごとに、タイトル・タグ・地点のどれかに含む公開の投稿
+  describe("by words", () => {
+    async function place(sourceId: number, regionName: string, name: string) {
+      const [row] = await db
+        .insert(schema.places)
+        .values({
+          sourceId,
+          regionSourceId: 22,
+          regionName,
+          name,
+          kind: "field",
+          syncedAt: new Date(),
+        })
+        .onConflictDoUpdate({ target: schema.places.sourceId, set: { regionName, name } })
+        .returning();
+      return row!;
+    }
+    const ids = async (input: Parameters<typeof list>[0]) =>
+      (await list(input)).items.map((i) => i.id).sort();
+
+    it("finds a word inside a title", async () => {
+      const me = await user();
+      const hit = await post(me.id, { title: "テスト_浜辺の夕焼けと船" });
+      await post(me.id, { title: "テスト_朝の市場" });
+      await post(me.id);
+      expect(await ids({ q: "夕焼け" })).toEqual([hit.id]);
+    });
+
+    it("finds a word inside a tag", async () => {
+      const me = await user();
+      const hit = await post(me.id, { tags: ["夕焼け空"] });
+      await post(me.id, { tags: ["夜景"] });
+      expect(await ids({ q: "夕焼け" })).toEqual([hit.id]);
+    });
+
+    it("finds a word in the chosen place, its region, or a place typed in", async () => {
+      const me = await user();
+      const lavender = await place(9101, "黒衣森", "ラベンダーベッド");
+      const byName = await post(me.id, { placeId: lavender.id });
+      const byText = await post(me.id, { placeText: "テスト_ラベンダーベッドの裏庭" });
+      await post(me.id, { placeText: "テスト_ミスト・ヴィレッジ" });
+      expect(await ids({ q: "ラベンダー" })).toEqual([byName.id, byText.id].sort());
+      expect(await ids({ q: "黒衣森" })).toEqual([byName.id]);
+    });
+
+    it("needs every word to be found somewhere", async () => {
+      const me = await user();
+      const lavender = await place(9102, "黒衣森", "ラベンダーベッド");
+      const both = await post(me.id, { title: "テスト_夕焼け", placeId: lavender.id });
+      await post(me.id, { title: "テスト_夕焼け" });
+      await post(me.id, { placeId: lavender.id });
+      expect(await ids({ q: "夕焼け ラベンダー" })).toEqual([both.id]);
+    });
+
+    it("finds the words however their width and case are written", async () => {
+      const me = await user();
+      const hit = await post(me.id, { title: "テスト_ＧＯＬＤ Saucer の夜" });
+      await post(me.id, { title: "テスト_Gold の夜" });
+      expect(await ids({ q: "gold ｓａｕｃｅｒ" })).toEqual([hit.id]);
+    });
+
+    it("reads % and _ as letters, not as wildcards", async () => {
+      const me = await user();
+      const percent = await post(me.id, { title: "テスト 100%の夕焼け" });
+      const underscore = await post(me.id, { title: "テスト a_b" });
+      await post(me.id, { title: "テスト 1000の夕焼け" });
+      await post(me.id, { title: "テスト axb" });
+      expect(await ids({ q: "100%" })).toEqual([percent.id]);
+      expect(await ids({ q: "a_b" })).toEqual([underscore.id]);
+    });
+
+    it("leaves out matching posts that are not public", async () => {
+      const me = await user();
+      await post(me.id, { title: "テスト_夕焼け", visibility: "unlisted" });
+      await post(me.id, { title: "テスト_夕焼け", visibility: "private" });
+      await post(me.id, { title: "テスト_夕焼け", status: "held" });
+      expect(await ids({ q: "夕焼け" })).toEqual([]);
+    });
+
+    it("narrows the words by a tag and a place together", async () => {
+      const me = await user();
+      const lavender = await place(9103, "黒衣森", "ラベンダーベッド");
+      const hit = await post(me.id, { title: "テスト_夕焼け", tags: ["海"], placeId: lavender.id });
+      await post(me.id, { title: "テスト_夕焼け", tags: ["海"] });
+      await post(me.id, { title: "テスト_夕焼け", placeId: lavender.id });
+      expect(await ids({ q: "夕焼け", tag: "海", placeId: lavender.id })).toEqual([hit.id]);
+    });
+
+    it("lists every public post when the words are blank", async () => {
+      const me = await user();
+      const a = await post(me.id, { title: "テスト_一枚目" });
+      const b = await post(me.id);
+      expect(await ids({ q: "  #  " })).toEqual([a.id, b.id].sort());
+    });
+
+    it("pages within the results", async () => {
+      const me = await user();
+      for (let i = 0; i < 3; i++)
+        await post(me.id, { title: `テスト_夕焼け${i}`, publishedAt: at(i) });
+      await post(me.id, { title: "テスト_朝", publishedAt: at(9) });
+      const first = await list({ q: "夕焼け", limit: 2 });
+      const second = await list({ q: "夕焼け", limit: 2, cursor: first.nextCursor! });
+      expect(first.items.length + second.items.length).toBe(3);
+      expect(second.nextCursor).toBeNull();
     });
   });
 

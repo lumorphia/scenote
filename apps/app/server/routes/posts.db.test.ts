@@ -341,6 +341,34 @@ describe.skipIf(!url)("posting an image (PostgreSQL)", () => {
       expect(page.items.map((i) => i.id)).toEqual([postId]);
     });
 
+    it("finds posts by the words in the search box (S6f)", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { postId } = await post(cookie, { title: "テスト_浜辺の夕焼け" });
+      await published(cookie, postId);
+      await published(cookie, (await post(cookie, { title: "テスト_朝の市場" })).postId);
+      const page = (await listPosts(`?q=${encodeURIComponent("夕焼け 浜辺")}`)).json() as Page;
+      expect(page.items.map((i) => i.id)).toEqual([postId]);
+    });
+
+    it("narrows the list to every tag repeated in the query", async () => {
+      const { cookie } = await loginWithLumorphia(app, mock, lumorphiaUser());
+      const { postId } = await post(cookie, { tags: ["夕焼け", "海"] });
+      await published(cookie, postId);
+      await published(cookie, (await post(cookie, { tags: ["夕焼け"] })).postId);
+      const query = `?tag=${encodeURIComponent("夕焼け")}&tag=${encodeURIComponent("海")}`;
+      const page = (await listPosts(query)).json() as Page;
+      expect(page.items.map((i) => i.id)).toEqual([postId]);
+    });
+
+    it("refuses more tags than a post can have", async () => {
+      const query = Array.from({ length: 11 }, (_, i) => `tag=t${i}`).join("&");
+      expect((await listPosts(`?${query}`)).statusCode).toBe(400);
+    });
+
+    it("refuses search words that are too long", async () => {
+      expect((await listPosts(`?q=${"a".repeat(201)}`)).statusCode).toBe(400);
+    });
+
     it("narrows the list to one person, and shows who they are", async () => {
       const user = lumorphiaUser();
       const { cookie } = await loginWithLumorphia(app, mock, user);
